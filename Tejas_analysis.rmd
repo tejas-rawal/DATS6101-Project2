@@ -64,7 +64,53 @@ xkabledplyhead(NYweath_00)
 ```
 
 
-1. Logistic regression to predict rainy day based on TMAX, TMIN, MONTH, DAY?
-2. Correlation between Air Quality and Weather
+1. Logistic regression to predict rainy day based on TMAX, TMIN, MONTH, DAY?  
+2. Can we predict the month based on weather variables (KNN)?  
+2. Correlation between Air Quality and Weather variables  
 
+First, we format our data to create a variable representing whether it rained on a given day, starting :
 
+```{r rainy days data}
+# add column based on condition of rain on a given day
+NYweath.rain <- NYweath_00
+NYweath.rain$rained <- ifelse(NYweath.rain$PRCP > 0.0, 1, 0)
+NYweath.rain$rained <- as.factor(NYweath.rain$rained)
+xkablesummary(NYweath.rain)
+xkabledplyhead(NYweath.rain)
+```
+
+First, let's create a two-way contingency table To study the effects on rainy day by the factor month and make sure there are no cells of zero frequencies.  
+
+```{r crosstable}
+rainy_vs_month = xtabs(~ rained + month, data = NYweath.rain)
+rainy_vs_month
+```
+
+We can then quickly run a chi-squared test to see if the two are independent (or same frequency distribution).  
+```{r chisq}
+chisq.result = chisq.test(rainy_vs_month)
+chisq.result
+```
+
+Based on the result, the factor variables `rained` and `month` are dependent - there is a statistically significant relationship between the two.  
+
+### The Logistic Model
+
+Let's jump to the logistic regression to predict a precipitation event on a given day:
+
+```{r logit attempt}
+rainedLogit <- glm(rained ~ TMAX + TMIN + month, data = NYweath.rain, family = "binomial")
+summary(rainedLogit)
+xkabledply(rainedLogit, title = paste("Logistic Regression :", format(formula(rainedLogit)) ))
+```
+
+All the coefficients are found significant (small p-values) except for the months of February, March, and April. TMAX has a negative effect on precipitation while TMIN has a positive effect. The months with significant coefficients all have a negative effect on the rain outcome for a given day.
+
+Let's obtain the growth/decay factors for each explanatory variables. The factors are the exponentials of the coefficients:   
+
+```{r growthDecayFactors, results='markup', collapse=F}
+expcoeff = exp(coef(rainedLogit))
+xkabledply(as.table(expcoeff), title = "Exponential of coefficients in rained Logit Reg")
+```
+
+### Logistic Model Evaluation
