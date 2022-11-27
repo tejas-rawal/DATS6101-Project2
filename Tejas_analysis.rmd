@@ -114,3 +114,63 @@ xkabledply(as.table(expcoeff), title = "Exponential of coefficients in rained Lo
 ```
 
 ### Logistic Model Evaluation
+
+#### Confusion matrix
+```{r logit confusion matrix}
+library(ModelMetrics)
+library(scales)
+
+rainedLogit.confusion <- confusionMatrix(
+  actual = rainedLogit$y,
+  predicted = rainedLogit$fitted.values)
+
+xkabledply(rainedLogit.confusion,
+  title = "Confusion matrix for logit model")
+
+accuracy <- (rainedLogit.confusion[4] + rainedLogit.confusion[1]) / nrow(NYweath.rain)
+precision <- rainedLogit.confusion[4] / (rainedLogit.confusion[4] + rainedLogit.confusion[3])
+```
+
+The confusion matrix above was generated for the cutoff value of `0.5`.  
+
+The accuracy of this logistic model is approx. `r format(accuracy, format = "f", digits = 2)` which shows that out of all the days that our model predicted it would rain on, about `r format(100 * accuracy, format= "f", digits = 2)`% of those predictions were correct.  
+
+The precision value signals that it only rained on `r format(100 * precision, format= "f", digits = 2)`% of the predicted rainy days.  
+
+#### Mcfadden's Test
+```{r logit mcfadden test}
+rainedNullLogit <- glm(rained ~ 1, data = NYweath.rain, family = "binomial")
+mcFadden = 1 - logLik(rainedLogit)/logLik(rainedNullLogit)
+mcFadden
+```
+
+The McFadden test outputs a pseudo-R-square value of `r mcFadden[1]` which demonstrates that only about `r format(100 * mcFadden[1], format= "f", digits = 2)`% of the variation in rainy day outcomes is explained by our regressors. This is not a significant outcome for the likelihood that the model is correct at predicting rainy days.  
+
+#### Hosmer and Lemeshow test  
+
+The Hosmer and Lemeshow Goodness of Fit test can be used to evaluate logistic regression fit. 
+
+```{r HosmerLemeshow}
+library(ResourceSelection)
+# Hosmer and Lemeshow test, a chi-squared test
+rainedLogitHoslem = hoslem.test(NYweath.rain$rained, fitted(rainedLogit))
+rainedLogitHoslem
+```
+
+The p-value of `r admitLogitHoslem$p.value` is very low which indicates that the model is a good fit.
+
+#### ROC/AUC
+```{r titanic logic roc/auc}
+library(pROC)
+probabilities <- predict(rainedLogit, type = "response")
+# add probabilities as column
+NYweath.rain$probs <- probabilities
+
+rainedLogitROC <- roc(rained~probs, data=NYweath.rain)
+plot(rainedLogitROC)
+# rainedLogitAUC <- auc(rainedLogitROC)
+```
+
+The area-under-curve of the ROC plot is `r format(rainedLogitROC$auc[1], digits = 2)`, which is less than the significance value of 0.8. The true positive rate of our model measure is about `r format(rainedLogitROC$auc[1] * 100, digits = 2)`%.  
+
+Overall, I think we should attempt to find a different combination of predictors for this model.  
