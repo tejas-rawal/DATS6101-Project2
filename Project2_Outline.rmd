@@ -73,7 +73,7 @@ In this project, we are digging into the relationship between human activity and
 
 ## Local weather and global and local human environmental footprint
 
-Emily will re-do logistic regression looking at measures of local and global human activity as regressors rather than year. She will also look into variable transformations (i.e., linear models fit to polynomials of regressors) to see if the response is best fit as linear or polynomial.  
+Emily will re-do linear regression looking at measures of local and global human activity as regressors rather than year. She will also look into variable transformations (i.e., linear models fit to polynomials of regressors) to see if the response is best fit as linear or polynomial.  
 
 ## Local weather and local environmental and climate factors  
 
