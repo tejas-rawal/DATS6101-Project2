@@ -84,24 +84,47 @@ Tejas will look at air local air quality data and how it relates to precipitatio
 
 Chris will look at the local weather data and how it affects human behavior. Will look for correlations between precipitation, temperature, stock market, COVID tests, and crime
 
+
+### Crime data
 ```{r}
 
-NYcrime <- data.frame(read.csv("/Users/christopherwasher/Documents/DATS6101/NYPD_Arrests_Data__Historic_.csv"))
+#NYcrime <- data.frame(read.csv("/Users/christopherwasher/Documents/DATS6101/NYPD_Arrests_Data__Historic_.csv"))
 
 
 
-NYcrime_agg <- NYcrime %>% count(ARREST_DATE)
+#NYcrime_agg <- NYcrime %>% count(ARREST_DATE)
 
+NYcrime_count <- tibble(read.csv("./data/NYPD_Arrests_counts.csv"))
 
-NYcrime_agg$ARREST_DATE <- as.Date(NYcrime_agg$ARREST_DATE, format = "%m/%d/%Y")
-NYcrime_agg$day <- format(NYcrime_agg$ARREST_DATE, format="%d")
-NYcrime_agg$month <- format(NYcrime_agg$ARREST_DATE, format="%m")
-NYcrime_agg$year <- format(NYcrime_agg$ARREST_DATE, format="%Y")
+NYcrime_count$ARREST_DATE <- as.Date(NYcrime_count$ARREST_DATE, format = "%m/%d/%Y")
+NYcrime_count$day <- format(NYcrime_count$ARREST_DATE, format="%d")
+NYcrime_count$month <- format(NYcrime_count$ARREST_DATE, format="%m")
+NYcrime_count$year <- format(NYcrime_count$ARREST_DATE, format="%Y")
 
-colnames(NYcrime_agg)[2] <- "NUM_ARREST"
+colnames(NYcrime_count)[2] <- "NUM_ARREST"
 
 ```
 
+
+
+### COVID Data
+
+``` {r}
+
+NYcovid <- tibble(read.csv("./data/COVID-19_Daily_Counts_of_Cases__Hospitalizations__and_Deaths.csv"))
+
+NYcovid <- select(NYcovid, 1:6)
+
+head(NYcovid)
+colnames(NYcovid)[1] <- "DATE"
+
+NYcovid$DATE <- as.Date(NYcovid$DATE, format = "%m/%d/%Y")
+NYcovid$day <- format(NYcovid$DATE, format="%d")
+NYcovid$month <- format(NYcovid$DATE, format="%m")
+NYcovid$year <- format(NYcovid$DATE, format="%Y")
+
+head(NYcovid)
+```
 
 ## Summary of Key Findings  
 
