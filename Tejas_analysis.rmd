@@ -63,10 +63,13 @@ NYweath_00 <- subset(NYweath_sub, year > 1899)
 xkabledplyhead(NYweath_00)
 ```
 
+## Analysis Questions
 
 1. Logistic regression to predict rainy day based on TMAX, TMIN, MONTH, DAY?  
-2. Can we predict the month based on weather variables (KNN)?  
-2. Correlation between Air Quality and Weather variables  
+2. Linear correlations between Air Quality and Weather variables  
+3. Can we predict the month based on weather variables (kNN)?  
+
+### Logitic Model Preparation
 
 First, we format our data to create a variable representing whether it rained on a given day, starting :
 
@@ -92,14 +95,14 @@ chisq.result = chisq.test(rainy_vs_month)
 chisq.result
 ```
 
-Based on the result, the factor variables `rained` and `month` are dependent - there is a statistically significant relationship between the two.  
+Based on the result, the factor variables `rained` and `month` are dependent - there is a statistically significant relationship between the two. We can use the `month` variable in our logistic regression to predict the `rained` outcome for a day. 
 
 ### The Logistic Model
 
 Let's jump to the logistic regression to predict a precipitation event on a given day:
 
 ```{r logit attempt}
-rainedLogit <- glm(rained ~ TMAX + TMIN + month, data = NYweath.rain, family = "binomial")
+rainedLogit <- glm(rained ~ month + TMAX + TMIN, data = NYweath.rain, family = "binomial")
 summary(rainedLogit)
 xkabledply(rainedLogit, title = paste("Logistic Regression :", format(formula(rainedLogit)) ))
 ```
@@ -113,6 +116,8 @@ expcoeff = exp(coef(rainedLogit))
 xkabledply(as.table(expcoeff), title = "Exponential of coefficients in rained Logit Reg")
 ```
 
+Compared to January, the months of February and March have a positive effect on the probability of a rainy day. Each gain in the minimum daily temperature value also has a positive effect on chances of rain.  
+
 ### Logistic Model Evaluation
 
 #### Confusion matrix
@@ -120,7 +125,7 @@ xkabledply(as.table(expcoeff), title = "Exponential of coefficients in rained Lo
 library(ModelMetrics)
 library(scales)
 
-rainedLogit.confusion <- confusionMatrix(
+rainedLogit.confusion <- ModelMetrics::confusionMatrix(
   actual = rainedLogit$y,
   predicted = rainedLogit$fitted.values)
 
@@ -133,9 +138,9 @@ precision <- rainedLogit.confusion[4] / (rainedLogit.confusion[4] + rainedLogit.
 
 The confusion matrix above was generated for the cutoff value of `0.5`.  
 
-The accuracy of this logistic model is approx. `r format(accuracy, format = "f", digits = 2)` which shows that out of all the days that our model predicted it would rain on, about `r format(100 * accuracy, format= "f", digits = 2)`% of those predictions were correct.  
+The accuracy of this logistic model is approx. `r format(accuracy, format = "f", digits = 2)` which shows that out of all predictions made by our model on whether it rained or not, `r format(100 * accuracy, format= "f", digits = 2)`% were correct.  
 
-The precision value signals that it only rained on `r format(100 * precision, format= "f", digits = 2)`% of the predicted rainy days.  
+The precision value signals that it actually only rained on `r format(100 * precision, format= "f", digits = 2)`% of the days out of all days the model predicted it would rain.    
 
 #### Mcfadden's Test
 ```{r logit mcfadden test}
@@ -168,9 +173,18 @@ NYweath.rain$probs <- probabilities
 
 rainedLogitROC <- roc(rained~probs, data=NYweath.rain)
 plot(rainedLogitROC)
-# rainedLogitAUC <- auc(rainedLogitROC)
 ```
 
 The area-under-curve of the ROC plot is `r format(rainedLogitROC$auc[1], digits = 2)`, which is less than the significance value of 0.8. The true positive rate of our model measure is about `r format(rainedLogitROC$auc[1] * 100, digits = 2)`%.  
 
 Overall, I think we should attempt to find a different combination of predictors for this model.  
+
+## NYC air quality data
+
+Let's pull in our air quality data. It contains measurements of daily PM2.5 and air quality index values taken from various locations around Manhattan.  
+
+Each file contains data for a given year, and we will be analyzing measurements from the past 10 years.  
+
+```{r air quality data}
+
+```
