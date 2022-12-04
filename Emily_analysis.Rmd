@@ -40,6 +40,23 @@ library(tibble)
 #loading data 
 NYweath <- data.frame(read.csv("data/NYC_weather_1869_2022.csv"))
 
+#new data loading from Emily?
+globalPop <- data.frame(read.csv("data/GDPPop.csv"))
+
+#new data loading from Emily
+NYCPop_1950 <- data.frame(read.csv("data/NYCPop_1950-2022.csv"))
+NYCPop_1950$Population <- as.numeric(NYCPop_1950$Population)
+NYCPop_1950$Year <- as.numeric(NYCPop_1950$Year)
+NYCPop_1950 <- subset(NYCPop_1950, select=c(Year, Population))
+
+NYCPop_1900 <- data.frame(read.csv("data/NYCPop_1900-2022.csv"))
+NYCPop_1900$Population <- as.numeric(NYCPop_1900$Population)
+NYCPop_1900$Year <- as.numeric(NYCPop_1900$Year)
+
+NYCPop_1950 <- subset(NYCPop_1950, select=c(Year, Population))
+
+Pop <- rep(c(NYCPop_1950$Population[1:73]), each = 365)
+
 #converting to R date format and adding columns for day, month, and year
 NYweath$DATE <- as.Date(NYweath$DATE)
 NYweath$day <- format(NYweath$DATE, format="%d")
@@ -56,7 +73,19 @@ NYweath$month <- as.factor(NYweath$month)
 NYweath_sub <- subset(NYweath, select = c(DATE, day, month, year, TMAX, TMIN, TAVG, PRCP, SNOW)) 
 #creating a subset for 1900 on
 NYweath_00 <- subset(NYweath_sub, year > 1899)
-xkabledplyhead(NYweath_00)
+#for(i in 1:length(NYweath_00$year)){
+  (NYweath_00$Pop[i]= NYCPop_1900$Population[(which(NYCPop_1900$Year == NYweath_00$year[i]))]
+   )}
+
+#New from Emily
+#Creating a subset for 1950 on
+NYweath_50 <- subset(NYweath_sub, year > 1949)
+
+for(i in 1:length(NYweath_50$year)){
+  (NYweath_50$Pop[i]= NYCPop_1950$Population[(which(NYCPop_1950$Year == NYweath_50$year[i]))]
+   )}
+
+xkabledplyhead(NYweath_50)
 ```
 
 
@@ -73,7 +102,123 @@ In this project, we are digging into the relationship between human activity and
 
 ## Local weather and global and local human environmental footprint
 
-Emily will re-do logistic regression looking at measures of local and global human activity as regressors rather than year. She will also look into variable transformations (i.e., linear models fit to polynomials of regressors) to see if the response is best fit as linear or polynomial.  
+At the end of our exploratory data analysis, we developed a linear model of maximum daily temperature over time, with year as a linear regressor. This revealed to us that there is a statistically significant increase in average maximum temperatures over time. However, we do not suspect that time is the cause-- rather, it is something else that has changed over time that has caused the warming in New York. We wanted to explore correlations with other, more direct proxies for human activity. 
+
+Our original fit used year as a numerical regressor and month as a categorical regressor. The resulting fit has an r-squared value of 0.775 and a slope of 0.025 degrees Fahrenheit per year, with all fit parameters' p-values well below 0.05. The different intercepts for the each level of the categorical variable (the twelve months of the year) indicated that January is the coldest and July the hottest month in Central Park, with an average difference in maximum daily temperature of approximately 46 degrees Fahrenheit in any given year over this window.  
+
+
+```{r}
+maxTfit00_1 <- lm(formula = TMAX ~ year + month, data = NYweath_00 )
+summary(maxTfit00_1)  
+
+```
+
+The two extremes and their linear models are plotted in the following figure.  
+
+
+```{r}
+#plot of just July and January
+
+ggplot(NYweath_00, aes(x = year, y = TMAX, color = month)) +
+    geom_point() +
+    scale_color_manual(values = c("01" = "purple4",
+                                   "07" = "red"), na.value = NA) +
+    geom_abline(aes(intercept = -11.05508, slope = 0.02539), col = "black", size = 1) + 
+    geom_abline(aes(intercept = 34.98295, slope = 0.02539), col = "black", size = 1) +
+  
+    labs(
+        x = "Year",
+        y = "Maximum Daily Temperature",
+        title = "Maximum Daily Temperature in Central Park") +
+    xlab(label = "Year") +
+    ylab(label = "Maximum daily temperature") +
+    ggtitle(label = "Maximum Daily Temperature in Central Park")
+```
+
+Moving forward, we'll just focus on July data to look at trends in the warmest temperatures each year. We have found a reasonable linear model for temperature over time, but now we want to do more to understand specific human factors over time. If humans are causing climate change, time is just a proxy for the underlying cause.   
+
+Do specific human activities either in New York City or Globally correlate to the temperature trends? What are global and local population trends over this time?  
+
+We looked to the Census for U.S. population data, but that is only reported decennially, so we looked for other sources. We found historical data back to 1950 for New York state online https://www.macrotrends.net/cities/23083/new-york-city/population. Because this source is not known to us, we validated it against decennial census data.  
+
+
+```{r}
+maxTfit00_1 <- lm(formula = TMAX ~ year + month, data = NYweath_00)
+summary(maxTfit00_1)  
+
+```
+
+```{r}
+maxTfit00_1 <- lm(formula = TMAX ~ Pop + month, data = NYweath_00)
+summary(maxTfit00_1)  
+
+```
+
+
+```{r}
+maxTfit50_1 <- lm(formula = TMAX ~ year + month, data = NYweath_50)
+summary(maxTfit50_1)  
+
+```
+
+
+```{r}
+maxTfit50_pop <- lm(formula = TMAX ~ Pop + month, data = NYweath_50)
+summary(maxTfit50_pop)  
+
+```
+
+
+```{r}
+
+NYweath_50 <- subset(NYweath_00, year > 1949)
+NYweath_50_Jul <- subset(NYweath_50, month == "07")
+xkabledplyhead(NYweath_50_Jul)
+NYweath_50_Jul_TMAX <- subset(NYweath_50_Jul, select = c(year, TMAX)) 
+NYweath_50_Jul_TMAX$Pop <- Pop
+#str(NYweath_50_Jul)
+#str(NYCPop_1950)
+
+NYweath_50 <- subset(NYweath_00, year > 1949)
+NYweath_50_Jan <- subset(NYweath_50, month == "01")
+xkabledplyhead(NYweath_50_Jan)
+NYweath_50_Jan_TMAX <- subset(NYweath_50_Jan, select = c(year, TMAX)) 
+NYweath_50_Jan_TMAX$Pop <- Pop
+
+## predict the future! When will NYC hit the 2.5 degree C limit?
+
+```
+
+So, let's re-run the linear model just for January and July as a function of year, before running it as a function of NYC Population.  
+
+```{r}
+#model_year_Jul <- lm(TMAX ~ year, NYweath_50_Jul_TMAX)
+#summary(model_year_Jul)
+
+model_year_Jan <- lm(TMAX ~ year, NYweath_50_Jan_TMAX)
+summary(model_year_Jan)
+
+model_year_Jan <- lm(TMAX ~ Pop, NYweath_50_Jan_TMAX)
+summary(model_year_Jan)
+
+```
+
+```{r}
+ggplot(NYweath_50_Jan_TMAX, aes(x = year, y = TMAX)) +
+    geom_point() +
+   # scale_color_manual(values = c("01" = "purple4",
+    #                               "07" = "red"), na.value = NA) +
+    #geom_abline(aes(intercept = 87.62912, slope = -0.00123), col = "black", size = 1) + 
+    geom_abline(aes(intercept = 8.4702, slope = 0.0153), col = "black", size = 1) +
+    labs(
+        x = "Year",
+        y = "Maximum Daily Temperature",
+        title = "Maximum Daily Temperature in Central Park") +
+    xlab(label = "Year") +
+    ylab(label = "Maximum daily temperature") +
+    ggtitle(label = "Maximum Daily Temperature in Central Park")
+```
+```
 
 ## Local weather and local environmental and climate factors  
 
@@ -84,3 +229,7 @@ Tejas will look at air local air quality data and how it relates to precipitatio
 ## Summary of Key Findings  
 
 ## Conclusion  
+
+## Citations
+
+New York City Metro Area Population 1950-2022. www.macrotrends.net. Retrieved 2022-12-03.
