@@ -37,6 +37,7 @@ library(ggrepel)
 library(gridExtra)
 #library(tibble)
 library(tidyverse)
+library(corrplot)
 
 #loading data 
 NYweath <- data.frame(read.csv("data/NYC_weather_1869_2022.csv"))
@@ -274,6 +275,7 @@ Next, we will combine our new dataset with the NYC weather data based on the dat
 DailyAQ_merged <- merge(DailyAQ_00_22, NYweath_00, by="DATE")
 # select required columns
 DailyAQ_merged <- DailyAQ_merged[ , c('DATE', 'year.x', 'month', 'PM2.5', 'AQI', 'TMAX', 'TMIN', 'PRCP', 'SNOW')]
+colnames(DailyAQ_merged)[2] <- "year"
 str(DailyAQ_merged)
 xkablesummary(DailyAQ_merged)
 
@@ -289,15 +291,33 @@ Run correlation analysis on continuous numerical variables:
     - is local air quality correlated to local weather patterns?  
 
 ```{r correlation analysis}
+# subset to numerical variables
+DailyAQ_numerics <- DailyAQ_merged[ , c('PM2.5', 'AQI', 'TMAX', 'TMIN', 'PRCP', 'SNOW')]
+# add PRCP and SNOW into single value
+DailyAQ_numerics$PRCP <- DailyAQ_numerics$PRCP + DailyAQ_numerics$SNOW
+DailyAQ_numerics <- subset(DailyAQ_numerics, select = -c(SNOW))
+DailyAQ_cor <- cor(DailyAQ_numerics)
+corrplot.mixed(DailyAQ_cor)
 ```
 
+From the pearson correlation plot above, we can see a significantly large, positive correlation between PM2.5 concentrations and the daily air quality index. Unfortunately, The correlations among our weather and air quality variables is relatively weak.  
+
+We can visualize a few correlation using a scatter plot:
+```{r scatter correlations}
+```
 
 Build linear regression model
     1. Describe significance and functions  
     2. calculate VIF factor  
     3. Evaluate fit and plot line on scatter   
+  
+Let's start by creating a linear model to describe the relationship between AQI and the rest of the numeric variables.
 
 ```{r linear model}
+aqi_fit <- lm(AQI ~ PM2.5 + TMAX + PRCP, data = DailyAQ_numerics)
+xkabledply(aqi_fit, title = paste("Model :", format( formula(aqi_fit) )))
+# model VIF scores
+xkablevif(aqi_fit)
 ```
 
 
