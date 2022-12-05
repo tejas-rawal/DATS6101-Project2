@@ -1,0 +1,86 @@
+---
+title: "Project2_Outline"
+author: "Team Awesomeness C, T, E"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    code_folding: hide
+    number_sections: false
+    toc: yes
+    toc_depth: 3
+    toc_float: yes
+  pdf_document:
+    toc: yes
+    toc_depth: '3'
+---
+
+```{r include=FALSE}
+# The package "ezids" (EZ Intro to Data Science) includes a lot of the helper functions we developed for the course. 
+# Some of the frequently used functions are loadPkg(), xkabledply(), xkablesummary(), uzscale(), etc.
+library(ezids)
+ 
+# some of common options (and the defaults) are: 
+# include=T, eval=T, echo=T, results='hide'/'asis'/'markup',..., collapse=F, warning=T, message=T, error=T, cache=T, fig.width=6, fig.height=4, fig.dim=c(6,4) #inches, fig.align='left'/'center','right', 
+# knitr::opts_chunk$set(warning = F, results = "markup", message = F)
+knitr::opts_chunk$set(warning = F, results = "markup", message = F)
+options(scientific=T, digits = 3) 
+# options(scipen=9, digits = 3) 
+# ‘scipen’: integer. A penalty to be applied when deciding to print numeric values in fixed or exponential notation.  Positive values bias towards fixed and negative towards scientific notation: fixed notation will be preferred unless it is more than ‘scipen’ digits wider.
+# use scipen=999 to prevent scientific notation at all times
+```
+
+```{r data init}
+#loading packages 
+library(ezids)
+library(ggplot2)
+library(ggrepel)
+library(gridExtra)
+library(tibble)
+
+#loading data 
+NYweath <- data.frame(read.csv("data/NYC_weather_1869_2022.csv"))
+
+#converting to R date format and adding columns for day, month, and year
+NYweath$DATE <- as.Date(NYweath$DATE)
+NYweath$day <- format(NYweath$DATE, format="%d")
+NYweath$month <- format(NYweath$DATE, format="%m")
+NYweath$year <- format(NYweath$DATE, format="%Y")
+#converting temperature observations to numerical
+NYweath$TMAX <- as.numeric(NYweath$TMAX)
+NYweath$TMIN <- as.numeric(NYweath$TMIN)
+NYweath$TAVG <- as.numeric(NYweath$TAVG)
+NYweath$year <- as.numeric(NYweath$year)
+#Making month a factor
+NYweath$month <- as.factor(NYweath$month)
+# subset data to desired variables
+NYweath_sub <- subset(NYweath, select = c(DATE, day, month, year, TMAX, TMIN, TAVG, PRCP, SNOW)) 
+#creating a subset for 1900 on
+NYweath_00 <- subset(NYweath_sub, year > 1899)
+xkabledplyhead(NYweath_00)
+```
+
+
+## Introduction  
+
+In this project, we are digging into the relationship between human activity and weather in New York city. Our three driving questions are:  
+
+1. How do changes in NYC weather patterns correlate to changes in population and economic activity over the same time frame?  
+
+2. How do changes in NYC weather patterns correlate to changes in other urban climate factors such as air quality?  
+
+3. How do changes in weather patterns correlate to other local human activity, such as  crime, reported COVID cases, and stock market performance?  
+
+
+## Local weather and global and local human environmental footprint
+
+Emily will re-do logistic regression looking at measures of local and global human activity as regressors rather than year. She will also look into variable transformations (i.e., linear models fit to polynomials of regressors) to see if the response is best fit as linear or polynomial.  
+
+## Local weather and local environmental and climate factors  
+
+Tejas will look at air local air quality data and how it relates to precipitation trends and local human activities.  (Will include logistic regression.)  
+
+## Local weather and local human social and economic activity
+
+## Summary of Key Findings  
+
+## Conclusion  

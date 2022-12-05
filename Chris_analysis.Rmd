@@ -1,0 +1,255 @@
+---
+title: "Project2_Outline"
+author: "Team Awesomeness C, T, E"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    code_folding: hide
+    number_sections: false
+    toc: yes
+    toc_depth: 3
+    toc_float: yes
+  pdf_document:
+    toc: yes
+    toc_depth: '3'
+---
+
+```{r include=FALSE}
+# The package "ezids" (EZ Intro to Data Science) includes a lot of the helper functions we developed for the course. 
+# Some of the frequently used functions are loadPkg(), xkabledply(), xkablesummary(), uzscale(), etc.
+library(ezids)
+ 
+# some of common options (and the defaults) are: 
+# include=T, eval=T, echo=T, results='hide'/'asis'/'markup',..., collapse=F, warning=T, message=T, error=T, cache=T, fig.width=6, fig.height=4, fig.dim=c(6,4) #inches, fig.align='left'/'center','right', 
+# knitr::opts_chunk$set(warning = F, results = "markup", message = F)
+knitr::opts_chunk$set(warning = F, results = "markup", message = F)
+options(scientific=T, digits = 3) 
+# options(scipen=9, digits = 3) 
+# ‘scipen’: integer. A penalty to be applied when deciding to print numeric values in fixed or exponential notation.  Positive values bias towards fixed and negative towards scientific notation: fixed notation will be preferred unless it is more than ‘scipen’ digits wider.
+# use scipen=999 to prevent scientific notation at all times
+```
+
+```{r data init}
+#loading packages 
+library(ezids)
+library(ggplot2)
+library(ggrepel)
+library(gridExtra)
+library(tibble)
+library(dplyr)
+
+#loading data 
+NYweath <- data.frame(read.csv("data/NYC_weather_1869_2022.csv"))
+
+#converting to R date format and adding columns for day, month, and year
+NYweath$DATE <- as.Date(NYweath$DATE)
+NYweath$day <- format(NYweath$DATE, format="%d")
+NYweath$month <- format(NYweath$DATE, format="%m")
+NYweath$year <- format(NYweath$DATE, format="%Y")
+#converting temperature observations to numerical
+NYweath$TMAX <- as.numeric(NYweath$TMAX)
+NYweath$TMIN <- as.numeric(NYweath$TMIN)
+NYweath$TAVG <- as.numeric(NYweath$TAVG)
+NYweath$year <- as.numeric(NYweath$year)
+#Making month a factor
+NYweath$month <- as.factor(NYweath$month)
+# subset data to desired variables
+NYweath_sub <- subset(NYweath, select = c(DATE, day, month, year, TMAX, TMIN, TAVG, PRCP, SNOW)) 
+#creating a subset for 1900 on
+NYweath_00 <- subset(NYweath_sub, year > 1899)
+xkabledplyhead(NYweath_00)
+```
+
+
+## Introduction  
+
+In this project, we are digging into the relationship between human activity and weather in New York city. Our three driving questions are:  
+
+1. How do changes in NYC weather patterns correlate to changes in population and economic activity over the same time frame?  
+
+2. How do changes in NYC weather patterns correlate to changes in other urban climate factors such as air quality?  
+
+3. How do changes in weather patterns correlate to other local human activity, such as  crime, reported COVID cases, and stock market performance?  
+
+
+## Local weather and global and local human environmental footprint
+
+Emily will re-do logistic regression looking at measures of local and global human activity as regressors rather than year. She will also look into variable transformations (i.e., linear models fit to polynomials of regressors) to see if the response is best fit as linear or polynomial.  
+
+## Local weather and local environmental and climate factors  
+
+Tejas will look at air local air quality data and how it relates to precipitation trends and local human activities.  (Will include logistic regression.)  
+
+## Local weather and local human social and economic activity
+
+Chris will look at the local weather data and how it affects human behavior. Will look for correlations between precipitation, temperature, stock market, COVID tests, and crime
+
+
+### Transform Precip to Yes/No Factor Var:
+
+```{r}
+# Add a column to convert PRCP to a binary factor variable. Don't care how much it rains, only if it rains. 
+NYweath_prcpFact <-NYweath_00
+
+NYweath_prcpFact$PRCP_factor <- cut(NYweath_00$PRCP, c(-Inf,0, Inf), labels = c(0,1))
+NYweath_prcpFact$PRCP_factor <- as.factor(NYweath_prcpFact$PRCP_factor)
+
+
+
+```
+
+### Crime data
+```{r}
+
+#NYcrime <- data.frame(read.csv("/Users/christopherwasher/Documents/DATS6101/NYPD_Arrests_Data__Historic_.csv"))
+
+
+
+#NYcrime_agg <- NYcrime %>% count(ARREST_DATE)
+
+NYcrime_count <- tibble(read.csv("./data/NYPD_Arrests_counts.csv"))
+
+#NYcrime_count$ARREST_DATE <- as.Date(NYcrime_count$ARREST_DATE, format = "%Y-%m-%d")
+#NYcrime_count$day <- format(NYcrime_count$ARREST_DATE, format="%d")
+#NYcrime_count$month <- format(NYcrime_count$ARREST_DATE, format="%m")
+#NYcrime_count$year <- format(NYcrime_count$ARREST_DATE, format="%Y")
+
+colnames(NYcrime_count)[2] <- "NUM_ARREST"
+
+head(NYcrime_count)
+
+
+```
+
+
+
+
+
+### COVID Data
+
+Looking at the effect of precipitation and temperature on the number of positive COVID cases. Using the "CASE_COUNT" parameter for the NYC Covid dataset. CASE_COUNT represents the count of patients tested who were confirmed to be COVID-19 cases on date_of_interest
+
+``` {r}
+
+NYcovid <- tibble(read.csv("./data/COVID-19_Daily_Counts_of_Cases__Hospitalizations__and_Deaths.csv"))
+
+NYcovid <- select(NYcovid, 1:3)
+
+head(NYcovid)
+colnames(NYcovid)[1] <- "DATE"
+
+NYcovid$DATE <- as.Date(NYcovid$DATE, format = "%m/%d/%Y")
+NYcovid$day <- format(NYcovid$DATE, format="%d")
+NYcovid$month <- format(NYcovid$DATE, format="%m")
+NYcovid$year <- format(NYcovid$DATE, format="%Y")
+
+head(NYcovid)
+summary(NYcovid)
+
+
+```
+Next, Looked at normality of the COVID count data. The counts were extremely skewed to the right. First removed multiple rounds of outliers using the outlierKD2 funciton. After removing all outliers, the data was still skewed right but less extreme. Used a square-root transform to normalize the data.
+```{r}
+
+
+
+covid_plot <- plot(NYcovid$DATE, NYcovid$CASE_COUNT)
+covid_boxplot <- boxplot(NYcovid$CASE_COUNT)
+
+NYcovid_rmOuts <- outlierKD2(NYcovid, CASE_COUNT, rm=TRUE, boxplt=TRUE, histogram=TRUE, qqplt=TRUE)
+
+NYcovid_rmOuts2 <- outlierKD2(NYcovid_rmOuts, CASE_COUNT, rm=TRUE, boxplt=TRUE, histogram=TRUE, qqplt=TRUE)
+
+NYcovid_rmOuts3 <- outlierKD2(NYcovid_rmOuts2, CASE_COUNT, rm=TRUE, boxplt=TRUE, histogram=TRUE, qqplt=TRUE)
+
+NYcovid_rmOuts4 <- outlierKD2(NYcovid_rmOuts3, CASE_COUNT, rm=TRUE, boxplt=TRUE, histogram=TRUE, qqplt=TRUE)
+
+
+covid_plot <- plot(NYcovid_rmOuts4$DATE, NYcovid_rmOuts4$CASE_COUNT)
+tail(NYcovid_rmOuts3)
+
+
+sqrt_count <- sqrt(NYcovid_rmOuts3$CASE_COUNT)
+#hist(sqrt_count)
+
+NYcovid_final <- cbind(NYcovid_rmOuts4, sqrt_count)
+head(NYcovid_final)
+
+```
+Add the Covid data to the NY Weather Data, subsetting the weather data to after 2/29/2022
+
+```{r}
+
+covWeather <- subset(NYweath_prcpFact, DATE >= ("2020-02-29"))
+NYcovid_finaldates <- subset(NYcovid_final, DATE <= "2022-09-26")
+tail(covWeather)
+NYweath_prcpCov <- cbind(covWeather, NYcovid_finaldates$CASE_COUNT,
+                         NYcovid_finaldates$sqrt_count)
+colnames(NYweath_prcpCov)[11:12] <- c("CASE_COUNT", "sqrt_count")
+
+covCount_prcp_plot <- plot(NYweath_prcpCov$sqrt_count, sqrt(NYweath_prcpCov$PRCP))
+
+```
+
+Plot of COV case count vs precipitation. no apparent relationship, however, more interested in effect of precip not so much about the correlation in prcp 
+
+
+T-test comparing Covid positive counts on days with precipitation vs days without prcp.
+
+```{r}
+
+cov_prcp1 <- subset(NYweath_prcpCov, PRCP_factor == 1)
+cov_prcp0 <- subset(NYweath_prcpCov, PRCP_factor == 0)
+
+
+
+cov_count_ttest <- t.test(cov_prcp0$sqrt_count, cov_prcp1$sqrt_count)
+cov_count_ttest
+
+cov_count_bplot <- ggplot()+
+  geom_boxplot(data = NYweath_prcpCov, aes(y = sqrt_count, x = PRCP_factor)) +
+  labs(title = "COVID Positive Counts")
+
+cov_count_bplot
+
+
+cov_2021 <- subset(NYweath_prcpCov, year >= 2021)
+
+cov_2021count_bplot <- ggplot()+
+  geom_boxplot(data = cov_2021, aes(y = sqrt_count, x = PRCP_factor)) +
+  labs(title = "2021 COVID Positive Counts")
+cov_2021count_bplot
+
+cov_2021prcp1 <- subset(cov_2021, PRCP_factor == 1)
+cov_2021prcp0 <- subset(cov_2021, PRCP_factor == 0)
+
+cov_2021count_ttest <- t.test(cov_2021prcp0$sqrt_count, cov_2021prcp1$sqrt_count)
+cov_2021count_ttest
+
+```
+
+No significant difference in the mean Covid case counts on days with precipitation or without. However, there was a greater difference in the means when only incorporating Covid from 2021+. 
+
+
+Will now build a linear model that incorporates temperature, precipitation, and Month to predict Covid counts. 
+
+```{r}
+library(psych)
+NYweath_cov_final <- NYweath_prcpCov[,c(1:5, 8, 10:12)]
+
+pairs.panels(NYweath_cov_final[4:9], 
+             method = "pearson", # correlation method
+             hist.col = "#00AFBB",
+             density = FALSE,  # show density plots
+             ellipses = FALSE # show correlation ellipses
+             )
+
+cov_weathLM <- lm(sqrt_count ~ (TMAX + PRCP_factor) * month, data = NYweath_cov_final)
+summary(cov_weathLM)
+
+```
+
+
+## Summary of Key Findings  
+
+## Conclusion  
