@@ -109,7 +109,7 @@ NYweath_prcpFact$PRCP_factor <- as.factor(NYweath_prcpFact$PRCP_factor)
 
 NYcrime_count <- tibble(read.csv("./data/NYPD_Arrests_counts.csv"))
 
-#NYcrime_count$ARREST_DATE <- as.Date(NYcrime_count$ARREST_DATE, format = "%Y-%m-%d")
+NYcrime_count$ARREST_DATE <- as.Date(NYcrime_count$ARREST_DATE, format = "%Y-%m-%d")
 #NYcrime_count$day <- format(NYcrime_count$ARREST_DATE, format="%d")
 #NYcrime_count$month <- format(NYcrime_count$ARREST_DATE, format="%m")
 #NYcrime_count$year <- format(NYcrime_count$ARREST_DATE, format="%Y")
@@ -122,8 +122,32 @@ head(NYcrime_count)
 ```
 
 
+Now will do summary statistics and basic EDA on the Crime Count data
+
+```{r}
 
 
+crime_plot <- plot(NYcrime_count$ARREST_DATE, NYcrime_count$NUM_ARREST)
+crime_boxplot <- boxplot(NYcrime_count$NUM_ARREST)
+
+```
+Add the Crime data to the NY Weather Data, subsetting the weather data to after 1/1/2022
+
+```{r}
+
+
+crimeWeather <- subset(NYweath_prcpFact, year >= 2006 & year < 2022)
+NYcrime_count <- NYcrime_count[order(NYcrime_count$ARREST_DATE),]
+
+tail(crimeWeather)
+NYweath_crime <- cbind(crimeWeather, NYcrime_count$NUM_ARREST)
+colnames(NYweath_crime)[11] <- c("NUM_ARREST")
+
+NYweath_crime_plot <- plot(sqrt(NYweath_crime$PRCP), NYweath_crime$NUM_ARREST)
+boxplot(sqrt(NYweath_crime$PRCP))
+
+```
+Plot of 
 
 ### COVID Data
 
