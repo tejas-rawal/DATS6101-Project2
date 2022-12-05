@@ -191,17 +191,18 @@ Let's load the new data and have a look at it's structure:
 ```{r load csvs}
 DailyAQ_00_22 <- data.frame(read.csv("data/daily-AQ-NY-00-20.csv"))
 DailyAQ_00_22 <- DailyAQ_00_22[c('Date', 'Daily.Mean.PM2.5.Concentration', 'DAILY_AQI_VALUE')]
-colnames(DailyAQ_00_22) <- c('Date', 'PM2.5', 'AQI')
+colnames(DailyAQ_00_22) <- c('DATE', 'PM2.5', 'AQI')
 str(DailyAQ_00_22)
+xkablesummary(DailyAQ_00_22)
 xkabledplyhead(DailyAQ_00_22)
 ```
 
 We need to convert the date from a character string to an R type. We also calculate year-over-year growth rates for both daily PM2.5 and AQI and store them in a column.
 
 ```{r formatting, echo = F}
-DailyAQ_00_22$Date <- as.Date(DailyAQ_00_22$Date, format="%M/%d/%y")
+DailyAQ_00_22$DATE <- as.Date(DailyAQ_00_22$DATE, "%m/%d/%y")
 
-DailyAQ_00_22$year = as.numeric(format(DailyAQ_00_22$Date, "%Y"))
+DailyAQ_00_22$year = as.numeric(format(DailyAQ_00_22$DATE, "%Y"))
 
 DailyAQ_00_22_Yearly_Growth <- DailyAQ_00_22 %>%
   group_by(year) %>%
@@ -217,7 +218,8 @@ DailyAQ_00_22_Yearly_Growth <- DailyAQ_00_22_Yearly_Growth %>%
           ((aqi_total - lag(aqi_total, default = 0)) / aqi_total) * 100
       )
 
-# Fill in 
+# remove first year data
+DailyAQ_00_22_Yearly_Growth <- DailyAQ_00_22_Yearly_Growth[-1,]
 
 ```
 
@@ -235,19 +237,45 @@ ggplot(DailyAQ_00_22) +
   labs(title="Distribution of Daily PM2.5 Measurements", x="ug/m3 LC", y="Count")
 
 ggplot(DailyAQ_00_22) +
-  geom_histogram(aes(x=AQI), na.rm=TRUE, alpha=0.5, color="black", fill='#2DD164', bins=50, binwidth=3) +
+  geom_histogram(aes(x=AQI), na.rm=TRUE, alpha=0.5, color="black", fill='#2DD164', bins=50, binwidth=5) +
   geom_vline(xintercept=mean_aqi, color="black", size=1, linetype=5, show.legend=FALSE) +
-  annotate("text", x=mean_aqi + 9, y=450, label=paste(round(mean_aqi, 2)), angle=0, size=4, color="black") +
+  annotate("text", x=mean_aqi + 9, y=625, label=paste(round(mean_aqi, 2)), angle=0, size=4, color="black") +
   labs(title="Distribution of Daily AQI Level", x="", y="Count")
 
 
 # yearly average and year-over year growth of daily AQI and PM2.5
+# TODO: combine plots into one frame
+ggplot(DailyAQ_00_22_Yearly_Growth, aes(group=1)) +
+  geom_line(aes(x = year, y = pm2.5_avg), stat="identity", color="#BD2AE2", size=1) +
+  geom_line(aes(x = year, y = pm2.5_diffRate), stat="identity", color="#290DDA", size=1) +
+  labs(title="Yearly average amount of PM2.5 particulates in atmosphere and growth rate", x="Year", y="ug/m3 LC") +
+  scale_y_continuous(sec.axis = sec_axis(~., name="Year-over-year Diff (%)")) +
+  theme(
+    axis.title.y = element_text(color = "#BD2AE2", size = 13),
+    axis.title.y.right = element_text(color = "#290DDA", size = 13)
+  )
+
+ggplot(DailyAQ_00_22_Yearly_Growth, aes(group=1)) +
+  geom_line(aes(x = year, y = aqi_avg), stat="identity", color="#2DD164", size=1) +
+  geom_line(aes(x = year, y = aqi_diffRate), stat="identity", color="#457108", size=1) +
+  labs(title="Yearly average amount of PM2.5 particulates in atmosphere and growth rate", x="Year", y="ug/m3 LC") +
+  scale_y_continuous(sec.axis = sec_axis(~., name="Year-over-year Diff (%)")) +
+  theme(
+    axis.title.y = element_text(color = "#2DD164", size = 13),
+    axis.title.y.right = element_text(color = "#457108", size = 13)
+  )
 
 ```
 
 Next, we will combine our new dataset with the NYC weather data based on the date. Since there are a few missing dates in the air quality data, we will simply drop those rows without a air quality measurement.  
  
 ```{r combine and clean data}
+# merge data frame by date
+DailyAQ_merged <- merge(DailyAQ_00_22, NYweath_00, by="DATE")
+# select required columns
+DailyAQ_merged <- DailyAQ_merged[ , c('DATE', 'year.x', 'month', 'PM2.5', 'AQI', 'TMAX', 'TMIN', 'PRCP', 'SNOW')]
+str(DailyAQ_merged)
+xkablesummary(DailyAQ_merged)
 
 ```
 
