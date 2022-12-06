@@ -85,6 +85,19 @@ Tejas will look at air local air quality data and how it relates to precipitatio
 Chris will look at the local weather data and how it affects human behavior. Will look for correlations between precipitation, temperature, stock market, COVID tests, and crime
 
 
+### Transform Precip to Yes/No Factor Var:
+
+```{r}
+# Add a column to convert PRCP to a binary factor variable. Don't care how much it rains, only if it rains. 
+NYweath_prcpFact <-NYweath_00
+
+NYweath_prcpFact$PRCP_factor <- cut(NYweath_00$PRCP, c(-Inf,0, Inf), labels = c(0,1))
+NYweath_prcpFact$PRCP_factor <- as.factor(NYweath_prcpFact$PRCP_factor)
+
+
+
+```
+
 ### Crime data
 ```{r}
 
@@ -96,24 +109,55 @@ Chris will look at the local weather data and how it affects human behavior. Wil
 
 NYcrime_count <- tibble(read.csv("./data/NYPD_Arrests_counts.csv"))
 
-NYcrime_count$ARREST_DATE <- as.Date(NYcrime_count$ARREST_DATE, format = "%m/%d/%Y")
-NYcrime_count$day <- format(NYcrime_count$ARREST_DATE, format="%d")
-NYcrime_count$month <- format(NYcrime_count$ARREST_DATE, format="%m")
-NYcrime_count$year <- format(NYcrime_count$ARREST_DATE, format="%Y")
+NYcrime_count$ARREST_DATE <- as.Date(NYcrime_count$ARREST_DATE, format = "%Y-%m-%d")
+#NYcrime_count$day <- format(NYcrime_count$ARREST_DATE, format="%d")
+#NYcrime_count$month <- format(NYcrime_count$ARREST_DATE, format="%m")
+#NYcrime_count$year <- format(NYcrime_count$ARREST_DATE, format="%Y")
 
 colnames(NYcrime_count)[2] <- "NUM_ARREST"
+
+head(NYcrime_count)
+
 
 ```
 
 
+Now will do summary statistics and basic EDA on the Crime Count data
+
+```{r}
+
+
+crime_plot <- plot(NYcrime_count$ARREST_DATE, NYcrime_count$NUM_ARREST)
+crime_boxplot <- boxplot(NYcrime_count$NUM_ARREST)
+
+```
+Add the Crime data to the NY Weather Data, subsetting the weather data to after 1/1/2022
+
+```{r}
+
+
+crimeWeather <- subset(NYweath_prcpFact, year >= 2006 & year < 2022)
+NYcrime_count <- NYcrime_count[order(NYcrime_count$ARREST_DATE),]
+
+tail(crimeWeather)
+NYweath_crime <- cbind(crimeWeather, NYcrime_count$NUM_ARREST)
+colnames(NYweath_crime)[11] <- c("NUM_ARREST")
+
+NYweath_crime_plot <- plot(sqrt(NYweath_crime$PRCP), NYweath_crime$NUM_ARREST)
+boxplot(sqrt(NYweath_crime$PRCP))
+
+```
+Plot of 
 
 ### COVID Data
+
+Looking at the effect of precipitation and temperature on the number of positive COVID cases. Using the "CASE_COUNT" parameter for the NYC Covid dataset. CASE_COUNT represents the count of patients tested who were confirmed to be COVID-19 cases on date_of_interest
 
 ``` {r}
 
 NYcovid <- tibble(read.csv("./data/COVID-19_Daily_Counts_of_Cases__Hospitalizations__and_Deaths.csv"))
 
-NYcovid <- select(NYcovid, 1:6)
+NYcovid <- select(NYcovid, 1:3)
 
 head(NYcovid)
 colnames(NYcovid)[1] <- "DATE"
@@ -124,7 +168,111 @@ NYcovid$month <- format(NYcovid$DATE, format="%m")
 NYcovid$year <- format(NYcovid$DATE, format="%Y")
 
 head(NYcovid)
+summary(NYcovid)
+
+
 ```
+Next, Looked at normality of the COVID count data. The counts were extremely skewed to the right. First removed multiple rounds of outliers using the outlierKD2 funciton. After removing all outliers, the data was still skewed right but less extreme. Used a square-root transform to normalize the data.
+```{r}
+
+
+
+covid_plot <- plot(NYcovid$DATE, NYcovid$CASE_COUNT)
+covid_boxplot <- boxplot(NYcovid$CASE_COUNT)
+
+NYcovid_rmOuts <- outlierKD2(NYcovid, CASE_COUNT, rm=TRUE, boxplt=TRUE, histogram=TRUE, qqplt=TRUE)
+
+NYcovid_rmOuts2 <- outlierKD2(NYcovid_rmOuts, CASE_COUNT, rm=TRUE, boxplt=TRUE, histogram=TRUE, qqplt=TRUE)
+
+NYcovid_rmOuts3 <- outlierKD2(NYcovid_rmOuts2, CASE_COUNT, rm=TRUE, boxplt=TRUE, histogram=TRUE, qqplt=TRUE)
+
+NYcovid_rmOuts4 <- outlierKD2(NYcovid_rmOuts3, CASE_COUNT, rm=TRUE, boxplt=TRUE, histogram=TRUE, qqplt=TRUE)
+
+
+covid_plot <- plot(NYcovid_rmOuts4$DATE, NYcovid_rmOuts4$CASE_COUNT)
+tail(NYcovid_rmOuts3)
+
+
+sqrt_count <- sqrt(NYcovid_rmOuts3$CASE_COUNT)
+#hist(sqrt_count)
+
+NYcovid_final <- cbind(NYcovid_rmOuts4, sqrt_count)
+head(NYcovid_final)
+
+```
+Add the Covid data to the NY Weather Data, subsetting the weather data to after 2/29/2022
+
+```{r}
+
+covWeather <- subset(NYweath_prcpFact, DATE >= ("2020-02-29"))
+NYcovid_finaldates <- subset(NYcovid_final, DATE <= "2022-09-26")
+tail(covWeather)
+NYweath_prcpCov <- cbind(covWeather, NYcovid_finaldates$CASE_COUNT,
+                         NYcovid_finaldates$sqrt_count)
+colnames(NYweath_prcpCov)[11:12] <- c("CASE_COUNT", "sqrt_count")
+
+covCount_prcp_plot <- plot(NYweath_prcpCov$sqrt_count, sqrt(NYweath_prcpCov$PRCP))
+
+```
+
+Plot of COV case count vs precipitation. no apparent relationship, however, more interested in effect of precip not so much about the correlation in prcp 
+
+
+T-test comparing Covid positive counts on days with precipitation vs days without prcp.
+
+```{r}
+
+cov_prcp1 <- subset(NYweath_prcpCov, PRCP_factor == 1)
+cov_prcp0 <- subset(NYweath_prcpCov, PRCP_factor == 0)
+
+
+
+cov_count_ttest <- t.test(cov_prcp0$sqrt_count, cov_prcp1$sqrt_count)
+cov_count_ttest
+
+cov_count_bplot <- ggplot()+
+  geom_boxplot(data = NYweath_prcpCov, aes(y = sqrt_count, x = PRCP_factor)) +
+  labs(title = "COVID Positive Counts")
+
+cov_count_bplot
+
+
+cov_2021 <- subset(NYweath_prcpCov, year >= 2021)
+
+cov_2021count_bplot <- ggplot()+
+  geom_boxplot(data = cov_2021, aes(y = sqrt_count, x = PRCP_factor)) +
+  labs(title = "2021 COVID Positive Counts")
+cov_2021count_bplot
+
+cov_2021prcp1 <- subset(cov_2021, PRCP_factor == 1)
+cov_2021prcp0 <- subset(cov_2021, PRCP_factor == 0)
+
+cov_2021count_ttest <- t.test(cov_2021prcp0$sqrt_count, cov_2021prcp1$sqrt_count)
+cov_2021count_ttest
+
+```
+
+No significant difference in the mean Covid case counts on days with precipitation or without. However, there was a greater difference in the means when only incorporating Covid from 2021+. 
+
+
+Will now build a linear model that incorporates temperature, precipitation, and Month to predict Covid counts. 
+
+```{r}
+library(psych)
+NYweath_cov_final <- NYweath_prcpCov[,c(1:5, 8, 10:12)]
+
+pairs.panels(NYweath_cov_final[4:9], 
+             method = "pearson", # correlation method
+             hist.col = "#00AFBB",
+             density = FALSE,  # show density plots
+             ellipses = FALSE # show correlation ellipses
+             )
+
+cov_weathLM <- lm(sqrt_count ~ (TMAX + PRCP_factor) * month, data = NYweath_cov_final)
+summary(cov_weathLM)
+
+```
+
 
 ## Summary of Key Findings  
 
