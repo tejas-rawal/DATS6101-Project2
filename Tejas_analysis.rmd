@@ -38,6 +38,7 @@ library(gridExtra)
 #library(tibble)
 library(tidyverse)
 library(corrplot)
+library(lattice)
 
 #loading data 
 NYweath <- data.frame(read.csv("data/NYC_weather_1869_2022.csv"))
@@ -214,13 +215,10 @@ DailyAQ_00_22_Yearly_Growth <- DailyAQ_00_22 %>%
 
 DailyAQ_00_22_Yearly_Growth <- DailyAQ_00_22_Yearly_Growth %>%
   mutate(pm2.5_diffRate = 
-              ((pm2.5_total - lag(pm2.5_total, default = 0)) / pm2.5_total) * 100,
+              ((pm2.5_total - lag(pm2.5_total)) / pm2.5_total) * 100,
          aqi_diffRate = 
-          ((aqi_total - lag(aqi_total, default = 0)) / aqi_total) * 100
+          ((aqi_total - lag(aqi_total)) / aqi_total) * 100
       )
-
-# remove first year data
-DailyAQ_00_22_Yearly_Growth <- DailyAQ_00_22_Yearly_Growth[-1,]
 
 ```
 
@@ -248,7 +246,7 @@ ggplot(DailyAQ_00_22) +
 # TODO: combine plots into one frame
 ggplot(DailyAQ_00_22_Yearly_Growth, aes(group=1)) +
   geom_line(aes(x = year, y = pm2.5_avg), stat="identity", color="#BD2AE2", size=1) +
-  geom_line(aes(x = year, y = pm2.5_diffRate), stat="identity", color="#290DDA", size=1) +
+  geom_line(aes(x = year, y = pm2.5_diffRate), na.rm = T, stat = "identity", color="#290DDA", size=1) +
   labs(title="Yearly average amount of PM2.5 particulates in atmosphere and growth rate", x="Year", y="ug/m3 LC") +
   scale_y_continuous(sec.axis = sec_axis(~., name="Year-over-year Diff (%)")) +
   theme(
@@ -258,7 +256,7 @@ ggplot(DailyAQ_00_22_Yearly_Growth, aes(group=1)) +
 
 ggplot(DailyAQ_00_22_Yearly_Growth, aes(group=1)) +
   geom_line(aes(x = year, y = aqi_avg), stat="identity", color="#2DD164", size=1) +
-  geom_line(aes(x = year, y = aqi_diffRate), stat="identity", color="#457108", size=1) +
+  geom_line(aes(x = year, y = aqi_diffRate), na.rm = T, stat="identity", color="#457108", size=1) +
   labs(title="Yearly average amount of PM2.5 particulates in atmosphere and growth rate", x="Year", y="ug/m3 LC") +
   scale_y_continuous(sec.axis = sec_axis(~., name="Year-over-year Diff (%)")) +
   theme(
@@ -290,45 +288,79 @@ Run correlation analysis on continuous numerical variables:
     - correlation plot and scatter plots of significant relationships.  
     - is local air quality correlated to local weather patterns?  
 
-```{r correlation analysis}
+```{r data prep}
 # subset to numerical variables
 DailyAQ_numerics <- DailyAQ_merged[ , c('PM2.5', 'AQI', 'TMAX', 'TMIN', 'PRCP', 'SNOW')]
-# add PRCP and SNOW into single value
-DailyAQ_numerics$PRCP <- DailyAQ_numerics$PRCP + DailyAQ_numerics$SNOW
-DailyAQ_numerics <- subset(DailyAQ_numerics, select = -c(SNOW))
+# combine PRCP and SNOW into single value
+#DailyAQ_numerics$PRCP <- DailyAQ_numerics$PRCP + DailyAQ_numerics$SNOW
+#DailyAQ_numerics <- subset(DailyAQ_numerics, select = -c(SNOW))
+```
+
+#### Correlation analysis
+
+Lattice pairs plot
+
+```{r pairs}
+pairs(DailyAQ_numerics)
+```
+Another way to look at correlation using the `corrplot` function:
+```{r corrplot}
 DailyAQ_cor <- cor(DailyAQ_numerics)
 corrplot.mixed(DailyAQ_cor)
 ```
 
-From the pearson correlation plot above, we can see a significantly large, positive correlation between PM2.5 concentrations and the daily air quality index. Unfortunately, The correlations among our weather and air quality variables is relatively weak.  
-
-We can visualize a few correlation using a scatter plot:
-```{r scatter correlations}
-```
+From the pearson correlation plot above, we can see a significantly large, positive correlation between PM2.5 concentrations and the daily air quality index. Unfortunately, The correlations among our weather and air quality variables is relatively weak. We will still attempt a linear model between the variables below.   
 
 Build linear regression model
     1. Describe significance and functions  
     2. calculate VIF factor  
-    3. Evaluate fit and plot line on scatter   
-  
-Let's start by creating a linear model to describe the relationship between AQI and the rest of the numeric variables.
+    3. Evaluate fit    
+
+#### Linear models
+
+Let's start by creating a linear model to describe the relationship between AQI and our weather variables.
 
 ```{r linear model}
-aqi_fit <- lm(AQI ~ PM2.5 + TMAX + PRCP, data = DailyAQ_numerics)
+aqi_fit <- lm(AQI ~ TMAX + TMIN + PRCP + SNOW, data = DailyAQ_numerics)
+summary(aqi_fit)
 xkabledply(aqi_fit, title = paste("Model :", format( formula(aqi_fit) )))
+```
+The coefficients for each regressor is significant. TMIN and PRCP have a negative effect on daily AQI, while TMAX and SNOW have a positive effect on daily AQI. Although the p-value of the F-statistic is significant, the model regressors only explain a measly 0.9% of the variability in daily AQI measurements.  
+
+Check for multicollinearity
+
+```{r model 1 VIF}
 # model VIF scores
 xkablevif(aqi_fit)
 ```
+With a variance inflation factor of 12.4, we cannot accept TMAX and TMIN as regressors in our model.
 
-
-Add month as a categorical regressor and build another model
+##### Adding `month` as a categorical regressor
     1. Repeat steps 1-3 from above  
     2. If significant, compare with first model via ANOVA (if that is also significant).  
 
 ```{r second linear model}
+aqi_fit2 <- lm(AQI ~ TMAX + month, data = DailyAQ_merged)
+summary(aqi_fit2)
+xkabledply(aqi_fit2, title = paste("Model :", format( formula(aqi_fit2) )))
 ```
 
+Check for multicollinearity
+
+```{r model 1 VIF}
+# model VIF scores
+xkablevif(aqi_fit2)
+```
+
+The regression coefficients for month and TMAX are all significant, with TMAX having a positive effect on daily AQI. Each month has a negative effect on daily AQI when compared to January, with September having the largest (negative) slope. The VIF values of all regressors are acceptable.  
+
+The p-value of the model F-statistic is also significant, allowing us to reject the null hypothesis and conclude that there’s a significant relationship between our regressors, TMAX and month, and the daily AQI.  
+
+However, the $R^2$ for our model is only `.149`. This indicates that only 14.7% of the variation in daily AQI can be explained by TMAX and month.  
+
+Use ANOVA to compare models  
 Try Ridge on model with best fit?  
+
 
 ### k-NN model to predict month based on weather and air quality data
 
