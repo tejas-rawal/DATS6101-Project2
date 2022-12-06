@@ -37,29 +37,11 @@ library(ggrepel)
 library(gridExtra)
 library(tibble)
 
+```
+
+```{r}
 #loading data 
 NYweath <- data.frame(read.csv("data/NYC_weather_1869_2022.csv"))
-
-#new data loading from Emily?
-GDPPop <- data.frame(read.csv("data/GDPPop.csv"))
-GDPPop$GlobalPop <- as.numeric(GDPPop$GlobalPop)
-GDPPop$USPop <- as.numeric(GDPPop$USPop)
-GDPPop$GlobalGDP <- as.numeric(GDPPop$GlobalGDP)
-GDPPop$USGDP <- as.numeric(GDPPop$USGDP)
-
-#new data loading from Emily
-NYCPop_1950 <- data.frame(read.csv("data/NYCPop_1950-2022.csv"))
-NYCPop_1950$Population <- as.numeric(NYCPop_1950$Population)
-NYCPop_1950$Year <- as.numeric(NYCPop_1950$Year)
-NYCPop_1950 <- subset(NYCPop_1950, select=c(Year, Population))
-
-NYCPop_1900 <- data.frame(read.csv("data/NYCPop_1900-2022.csv"))
-NYCPop_1900$Population <- as.numeric(NYCPop_1900$Population)
-NYCPop_1900$Year <- as.numeric(NYCPop_1900$Year)
-
-NYCPop_1950 <- subset(NYCPop_1950, select=c(Year, Population))
-
-Pop <- rep(c(NYCPop_1950$Population[1:73]), each = 365)
 
 #converting to R date format and adding columns for day, month, and year
 NYweath$DATE <- as.Date(NYweath$DATE)
@@ -74,31 +56,55 @@ NYweath$year <- as.numeric(NYweath$year)
 #Making month a factor
 NYweath$month <- as.factor(NYweath$month)
 # subset data to desired variables
+
+```
+
+```{r}
+#new data loading from Emily?
+GDPPop <- data.frame(read.csv("data/GDPPop.csv"))
+GDPPop$GlobalPop <- as.numeric(GDPPop$GlobalPop)
+GDPPop$USPop <- as.numeric(GDPPop$USPop)
+GDPPop$GlobalGDP <- as.numeric(GDPPop$GlobalGDP)
+GDPPop$USGDP <- as.numeric(GDPPop$USGDP)
+
+#new data loading from Emily, New York County (Manhattan) population from 1970 on https://data.ny.gov/Government-Finance/Annual-Population-Estimates-for-New-York-State-and/krt9-ym2k
+NYCPop_1970 <- data.frame(read.csv("data/NY_Pop_County_1970.csv"))
+NYCPop_1970$Population <- as.numeric(NYCPop_1970$Population)
+NYCPop_1970$Year <- as.numeric(NYCPop_1970$Year)
+MHTPop_1970 <- subset(NYCPop_1970, Geography == "New York County") 
+MHTPop_1970 <- subset(MHTPop_1970, select=c(Year, Population))
+
 NYweath_sub <- subset(NYweath, select = c(DATE, day, month, year, TMAX, TMIN, TAVG, PRCP, SNOW)) 
 #creating a subset for 1900 on
 NYweath_00 <- subset(NYweath_sub, year > 1899)
-for(i in 1:length(NYweath_00$year)){
-  (NYweath_00$Pop[i]= NYCPop_1900$Population[(which(NYCPop_1900$Year == NYweath_00$year[i]))]
+
+#creating a subset for 1970 on
+NYweath_70 <- subset(NYweath_00, year > 1969)
+NYweath_70 <- subset(NYweath_70, year < 2022)
+
+for(i in 1:length(NYweath_70$year)){
+  (NYweath_70$Pop[i]= MHTPop_1970$Population[(which(MHTPop_1970$Year == NYweath_70$year[i]))]
   )}
+
+#for(i in 1:length(NYweath_00$year)){
+#  (NYweath_00$Pop[i]= NYCPop_1900$Population[(which(NYCPop_1900$Year == NYweath_00$year[i]))]
+#  )}
 
 #New from Emily
 #Creating a subset for 1950 on, and for 1960 on
-NYweath_50 <- subset(NYweath_sub, year > 1949)
+#NYweath_50 <- subset(NYweath_sub, year > 1949)
 
-for(i in 1:length(NYweath_50$year)){
-  (NYweath_50$Pop[i]= NYCPop_1950$Population[(which(NYCPop_1950$Year == NYweath_50$year[i]))]
-   )}
+#for(i in 1:length(NYweath_50$year)){
+#  (NYweath_50$Pop[i]= NYCPop_1950$Population[(which(NYCPop_1950$Year == NYweath_50$year[i]))]
+#   )}
 
-NYweath_60 <- subset(NYweath_00, year > 1959)
-NYweath_60 <- subset(NYweath_00, year < 2022)
-for(i in 1:length(NYweath_60$year)){
-  (NYweath_60$GlobalPop[i]= GDPPop$GlobalPop[(which(GDPPop$Year == NYweath_60$year[i]))]
-   )}
-
-xkabledplyhead(NYweath_50)
+#NYweath_60 <- subset(NYweath_00, year > 1959)
+#NYweath_60 <- subset(NYweath_00, year < 2022)
+#for(i in 1:length(NYweath_60$year)){
+#  (NYweath_60$GlobalPop[i]= GDPPop$GlobalPop[(which(GDPPop$Year == NYweath_60$year[i]))]
+#   )}
+#xkabledplyhead(NYweath_50)
 ```
-
-
 ## Introduction  
 
 In this project, we are digging into the relationship between human activity and weather in New York city. Our three driving questions are:  
@@ -118,8 +124,8 @@ Our original fit used year as a numerical regressor and month as a categorical r
 
 
 ```{r}
-maxTfit00_1 <- lm(formula = TMAX ~ year + month, data = NYweath_00 )
-summary(maxTfit00_1)  
+maxTfit00_ym <- lm(formula = TMAX ~ year + month, data = NYweath_00 )
+summary(maxTfit00_ym)  
 
 ```
 
@@ -153,8 +159,8 @@ We looked to the Census for U.S. population data, but that is only reported dece
 
 
 ```{r}
-maxTfit00_1 <- lm(formula = TMAX ~ month, data = NYweath_00)
-summary(maxTfit00_1)  
+maxTfit00_m <- lm(formula = TMAX ~ month, data = NYweath_00)
+summary(maxTfit00_m)  
 
 ```
 ```{r}
