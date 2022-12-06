@@ -59,7 +59,7 @@ NYweath$month <- as.factor(NYweath$month)
 
 ```
 
-```{r}
+```{r setup, include=FALSE}
 #new data loading from Emily?
 GDPPop <- data.frame(read.csv("data/GDPPop.csv"))
 GDPPop$GlobalPop <- as.numeric(GDPPop$GlobalPop)
@@ -73,6 +73,12 @@ NYCPop_1970$Population <- as.numeric(NYCPop_1970$Population)
 NYCPop_1970$Year <- as.numeric(NYCPop_1970$Year)
 MHTPop_1970 <- subset(NYCPop_1970, Geography == "New York County") 
 MHTPop_1970 <- subset(MHTPop_1970, select=c(Year, Population))
+
+#new data loading from Emily, New York State population from 1900 on 
+NYSPop_1900 <- data.frame(read.csv("data/NYSPop_1900-2021.csv"))
+NYSPop_1900$Population <- as.numeric(NYSPop_1900$Population)
+NYSPop_1900$Year <- as.numeric(NYSPop_1900$Year)
+
 
 NYweath_sub <- subset(NYweath, select = c(DATE, day, month, year, TMAX, TMIN, TAVG, PRCP, SNOW)) 
 #creating a subset for 1900 on
@@ -164,9 +170,23 @@ summary(maxTfit00_m)
 
 ```
 ```{r}
-maxTfit00_1 <- lm(formula = TMAX ~ year + month*day + PRCP + SNOW, data = NYweath_00 )
-summary(maxTfit00_1)  
+maxTfit00_all <- lm(formula = TMAX ~ year + month + PRCP + SNOW, data = NYweath_00 )
+summary(maxTfit00_all)  
 
+```
+
+```{r}
+maxTfit00_all_intrxn <- lm(formula = TMAX ~ year + month*day + PRCP + SNOW, data = NYweath_00 )
+summary(maxTfit00_all)  
+
+```
+```{r}
+anova(maxTfit00_m, maxTfit00_ym)
+
+```
+
+```{r}
+anova(maxTfit00_all, maxTfit00_all_intrxn)
 ```
 
 
@@ -195,7 +215,7 @@ summary(maxTfit50_pop)
 
 NYweath_50 <- subset(NYweath_00, year > 1949)
 NYweath_50_Jul <- subset(NYweath_50, month == "07")
-xkabledplyhead(NYweath_50_Jul)
+xkabledplyhead(NYweath_50_Jul)/
 NYweath_50_Jul_TMAX <- subset(NYweath_50_Jul, select = c(year, TMAX)) 
 NYweath_50_Jul_TMAX$Pop <- Pop
 #str(NYweath_50_Jul)
