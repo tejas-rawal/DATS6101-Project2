@@ -37,6 +37,7 @@ library(ggrepel)
 library(gridExtra)
 library(tibble)
 library(dplyr)
+library(tidyr)
 
 #loading data 
 NYweath <- data.frame(read.csv("data/NYC_weather_1869_2022.csv"))
@@ -58,6 +59,15 @@ NYweath_sub <- subset(NYweath, select = c(DATE, day, month, year, TMAX, TMIN, TA
 #creating a subset for 1900 on
 NYweath_00 <- subset(NYweath_sub, year > 1899)
 xkabledplyhead(NYweath_00)
+```
+
+CW ADD: Adding a 'TOT_PRCP' row that sums up the total precipitation between SNOW and PRCP. This row will be used in Question 3.
+
+```{r}
+
+NYweath_final <- NYweath_00
+NYweath_final$TOT_PRCP <- NYweath_00$PRCP + NYweath_00$SNOW
+
 ```
 
 
@@ -85,13 +95,13 @@ Tejas will look at air local air quality data and how it relates to precipitatio
 Chris will look at the local weather data and how it affects human behavior. Will look for correlations between precipitation, temperature, stock market, COVID tests, and crime
 
 
-### Transform Precip to Yes/No Factor Var:
+First step is to Transform Precip to Yes/No Factor Var. Will use PRCP_TOT to account for all PRCP. 
 
 ```{r}
 # Add a column to convert PRCP to a binary factor variable. Don't care how much it rains, only if it rains. 
-NYweath_prcpFact <-NYweath_00
+NYweath_prcpFact <-NYweath_final
 
-NYweath_prcpFact$PRCP_factor <- cut(NYweath_00$PRCP, c(-Inf,0, Inf), labels = c(0,1))
+NYweath_prcpFact$PRCP_factor <- cut(NYweath_final$TOT_PRCP, c(-Inf,0, Inf), labels = c(0,1))
 NYweath_prcpFact$PRCP_factor <- as.factor(NYweath_prcpFact$PRCP_factor)
 
 
@@ -99,6 +109,8 @@ NYweath_prcpFact$PRCP_factor <- as.factor(NYweath_prcpFact$PRCP_factor)
 ```
 
 ### Crime data
+
+Initial import of the data. Due to the size of the data, I imported it once, aggregated the data into a new data frame that only includes date and arrest count. This was exported and saved in the Git. The code below imports directly from that aggregated dataset.
 ```{r}
 
 #NYcrime <- data.frame(read.csv("/Users/christopherwasher/Documents/DATS6101/NYPD_Arrests_Data__Historic_.csv"))
@@ -109,20 +121,119 @@ NYweath_prcpFact$PRCP_factor <- as.factor(NYweath_prcpFact$PRCP_factor)
 
 NYcrime_count <- tibble(read.csv("./data/NYPD_Arrests_counts.csv"))
 
-#NYcrime_count$ARREST_DATE <- as.Date(NYcrime_count$ARREST_DATE, format = "%Y-%m-%d")
+NYcrime_count$ARREST_DATE <- as.Date(NYcrime_count$ARREST_DATE, format = "%Y-%m-%d")
 #NYcrime_count$day <- format(NYcrime_count$ARREST_DATE, format="%d")
 #NYcrime_count$month <- format(NYcrime_count$ARREST_DATE, format="%m")
 #NYcrime_count$year <- format(NYcrime_count$ARREST_DATE, format="%Y")
 
-colnames(NYcrime_count)[2] <- "NUM_ARREST"
+colnames(NYcrime_count)[2] <- "ARREST_DATE"
 
 head(NYcrime_count)
-
 
 ```
 
 
+Now will do summary statistics and basic EDA on the Crime Count data
 
+```{r}
+
+
+crime_plot <- plot(NYcrime_count$ARREST_DATE, NYcrime_count$NUM_ARREST)
+crime_boxplot <- boxplot(NYcrime_count$NUM_ARREST)
+
+```
+Add the Crime data to the NY Weather Data, subsetting the weather data to after 1/1/2022
+
+```{r}
+
+
+crimeWeather <- subset(NYweath_prcpFact, year >= 2006 & year < 2022)
+NYcrime_count <- NYcrime_count[order(NYcrime_count$ARREST_DATE),]
+
+tail(crimeWeather)
+NYweath_crime <- cbind(crimeWeather, NYcrime_count$NUM_ARREST)
+colnames(NYweath_crime)[12] <- c("NUM_ARREST")
+
+#NYweath_crime_plot <- plot(sqrt(NYweath_crime$PRCP), NYweath_crime$NUM_ARREST)
+boxplot((NYweath_crime$TOT_PRCP))
+
+NY_weathcrime_ggplot <- ggplot(NYweath_crime, aes(x = TMAX, y =NUM_ARREST)) + 
+  geom_point(aes(colour = PRCP_factor)) +
+  labs(x = "Temperature", y = "Number of Daily Arrests", 
+       title = "Weather Patterns for NYC Crime")
+NY_weathcrime_ggplot
+
+
+```
+Initially made a boxplot of precipitation to observe the distribution.. It is extremely skewed. However, because I'm only interested in determining if precipitation has an effect, will build a linear model using PRCP as a Factor.
+
+
+```{r}
+
+crimeWeath_lm <- lm(NUM_ARREST ~ TMAX + PRCP_factor,  
+                    data = NYweath_crime)
+crimeWeathMonth_lm <- lm(NUM_ARREST ~ (TMAX + PRCP_factor * month), 
+                    data = NYweath_crime)
+#crimeWeathTMIN_lm <- lm(NUM_ARREST ~ (TMIN + PRCP_factor), 
+#                    data = NYweath_crime)
+
+summary(crimeWeath_lm)
+
+```
+
+The Linear model of Arrest Numbers as a result of temperature and precipitation. The Coefficients are significant but the R^2 is 0. This indicates there is a statistically significant relationship between Arrests and TMAX and Precipitation but these variables do not explain any of the variability in the data. Increasing TMAX correlated with an increase in Arrests. And PRCP present is associated with a decreased number of arrests.
+
+
+### Stock Market Data
+
+Import the stock market data and convert the date column to a 'Date' data type. Also pulled out the 'day', 'month', and 'year' columns to help in analysis.
+
+One last note, will need to fill in the missing date and populated the other columns with 'NAs'. This will enable us to combine the stocks data with the weather data.
+
+``` {r}
+
+NYstock <- tibble(read.csv("./data/Dow Jones Industrial Average Historical Data.csv"))
+
+tail(NYstock)
+
+NYstock$Date <- as.Date(NYstock$Date, format = "%m/%d/%y")
+
+NYstock2 <- NYstock
+NYstock2 <- NYstock2 %>% 
+  complete(Date = seq.Date(min(Date), max(Date), by="day"))
+
+options(scientific=T, digits = 10) 
+
+
+# This is all just test code for figuring out how to clean the data. 
+# Not part of final script.
+#NYstocktest <- NYstock2
+#NYstocktest$Vol. = substr(NYstocktest$Vol.,1,nchar(NYstocktest$Vol.)-1)
+#tail(NYstocktest)
+
+
+#NYstocktest$Price <- gsub(",", "", NYstocktest$Price)
+#NYstocktest[3:5] <- lapply(NYstocktest[3:5], gsub, pattern = ",", replacement = "") 
+#NYstocktest$Change.. <- gsub("%", "", NYstocktest$Change..)
+#NYstocktest[2:7] <- sapply(NYstocktest[2:7], as.numeric)
+###
+
+NYstock2$Vol. = substr(NYstock2$Vol., 1, nchar(NYstock2$Vol.) - 1)
+NYstock2[2:5] <- lapply(NYstock2[2:5], gsub, pattern = ",", replacement = "") 
+NYstock2$Change.. <- gsub("%", "", NYstock2$Change..)
+NYstock2[2:7] <- sapply(NYstock2[2:7], as.numeric)
+
+NYstock2$day <- format(NYstock2$Date, format="%d")
+NYstock2$month <- format(NYstock2$Date, format="%m")
+NYstock2$year <- format(NYstock2$Date, format="%Y")
+
+
+
+head(NYstock2)
+summary(NYstock2)
+
+
+```
 
 
 ### COVID Data
