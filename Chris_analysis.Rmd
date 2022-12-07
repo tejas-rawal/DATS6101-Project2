@@ -38,6 +38,7 @@ library(gridExtra)
 library(tibble)
 library(dplyr)
 library(tidyr)
+library(psych)
 
 #loading data 
 NYweath <- data.frame(read.csv("data/NYC_weather_1869_2022.csv"))
@@ -155,7 +156,7 @@ NYweath_crime <- cbind(crimeWeather, NYcrime_count$NUM_ARREST)
 colnames(NYweath_crime)[12] <- c("NUM_ARREST")
 
 #NYweath_crime_plot <- plot(sqrt(NYweath_crime$PRCP), NYweath_crime$NUM_ARREST)
-boxplot((NYweath_crime$TOT_PRCP))
+#boxplot((NYweath_crime$TOT_PRCP))
 
 NY_weathcrime_ggplot <- ggplot(NYweath_crime, aes(x = TMAX, y =NUM_ARREST)) + 
   geom_point(aes(colour = PRCP_factor)) +
@@ -232,6 +233,92 @@ NYstock2$year <- format(NYstock2$Date, format="%Y")
 head(NYstock2)
 summary(NYstock2)
 
+
+```
+
+
+
+Really only care about the volume of data. will remove all other columns and only work with Date + Vol. Will combine that witht he weather data for further analysis.
+
+
+```{r}
+
+NYstock_final <- NYstock2[,c("Date", "Vol.")]
+NYstock_final <- subset(NYstock_final, Date <= "2022-09-26")
+weather_stockDates <- subset(NYweath_prcpFact, DATE >= "1979-12-25")
+
+stockWeather <- cbind(weather_stockDates, NYstock_final)
+colnames(stockWeather)[13] <- c("Volume")
+
+
+```
+
+Now will do EDA on the the volume data to build a linear regression model. First will look at normality and look for any correlations.
+
+
+```{r}
+stockWeather_rmNA <- subset(stockWeather, !is.na(Volume))
+stock_hist <- hist(stockWeather_rmNA$Volume)
+
+```
+
+Histogram shows the data is right skewed. Will use sqrt of the volume to normalize.
+
+```{r}
+
+stockWeather_rmNA$Volume_norm <- sqrt(stockWeather_rmNA$Volume)
+stockWeather_rmNA <- subset(stockWeather_rmNA, select = -c(Date))
+stockWeather_90s <- subset(stockWeather_rmNA, year >= 1988 & year <= 1999)
+
+hist(stockWeather_rmNA$Volume_norm)
+boxplot(stockWeather_rmNA$Volume_norm)
+
+```
+
+The distribution of sqrt Volume is considerably more normal. Will now look at correlations with Weather data. The boxplot shows there are no outliers after normalizing the data.
+
+
+```{r}
+
+pairs.panels(stockWeather_rmNA[c(5,10,11,13,14)], 
+             method = "pearson", # correlation method
+             hist.col = "#00AFBB",
+             density = FALSE,  # show density plots
+             ellipses = FALSE # show correlation ellipses
+             )
+
+```
+
+There are no strong correlations present in the data. Will next look at a scatter plot of the Stock Volume vs TMAX, categorized by days with PRCP.
+
+```{r}
+
+
+NY_weathstock_scatter <- ggplot(stockWeather_rmNA, aes(x = TMAX, y =Volume_norm)) + 
+  geom_point(aes(colour = PRCP_factor)) +
+  labs(x = "Temperature", y = "Total Daily DOW Trade Volume", 
+       title = "Weather Patterns for DOW Trade Volume")
+NY_weathstock_scatter
+
+
+## Trying again with the 90's stock data.
+
+NY_90s_weathstock_scatter <- ggplot(stockWeather_90s, aes(x = TMAX, y =Volume_norm)) + 
+  geom_point(aes(colour = PRCP_factor)) +
+  labs(x = "Temperature", y = "Total Daily DOW Trade Volume", 
+       title = "Weather Patterns for DOW Trade Volume in the 1990s")
+NY_90s_weathstock_scatter
+
+```
+
+
+
+
+```{r}
+
+
+stock_LM <- lm(Volume_norm ~ TMAX + TOT_PRCP, stockWeather_rmNA)
+summary(stock_LM)
 
 ```
 
