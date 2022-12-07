@@ -37,6 +37,7 @@ library(ggrepel)
 library(gridExtra)
 library(tibble)
 library(dplyr)
+library(tidyr)
 
 ```
 
@@ -158,6 +159,36 @@ ggplot(NYweathshoot_06) +
   geom_histogram(aes(x=Shootings), na.rm=TRUE, alpha=0.5, color="black", bins=100, binwidth=2)
 
 #Not quite normal-- necessarily right-skewed, but a lot of data points...
+
+```
+```{r average # shootings bar plot, results='asis'}
+shoot_Month <- NYweathshoot_06 %>%
+  group_by(month) %>%
+  summarize("Avg Number of Shootings" = mean(Shootings, na.rm=T),
+            "Avg Number of Shootings Flagged as Murders" = mean(Murders, na.rm=T))
+
+# side-by-side bar plot
+shoot_Month %>%
+  dplyr::select(month, "Avg Number of Shootings", "Avg Number of Shootings Flagged as Murders") %>%
+  gather(key="Value", value="Count", "Avg Number of Shootings", "Avg Number of Shootings Flagged as Murders") %>% 
+  ggplot(aes(x=month, y=Count, fill=Value)) +
+  geom_col(na.rm=TRUE, alpha=0.5, color="black", position="dodge") +
+  labs(title="Average NYCShooting Statistics (2006-2021) By Month", x="Month", y="Number of Shootings") +
+  scale_fill_manual(values=c("red", "blue"))
+```
+```{r}
+ggplot(NYweathshoot_06, aes(x = TMAX, y = Shootings)) +
+    geom_point() +
+    #scale_color_manual(values = c("01" = "purple4",
+#                                   "07" = "red"), na.value = NA) +
+    #geom_abline(aes(intercept = -11.05508, slope = 0.02539), col = "black", size = 1) + 
+    labs(
+        x = "Year",
+        y = "Maximum Daily Temperature",
+        title = "Maximum Daily Temperature in Central Park") +
+    xlab(label = "TMAX (degrees Fahrenheit)") +
+    ylab(label = "# Shootings") +
+    ggtitle(label = "Number of NYC Shootings v. TMAX")
 ```
 
 ```{r}
