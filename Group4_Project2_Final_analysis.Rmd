@@ -165,6 +165,14 @@ NY_weathcrime_ggplot <- ggplot(NYweath_crime,
        title = "Weather Patterns for NYC Crime")
 NY_weathcrime_ggplot
 
+NY_weathcrime_ggplot2 <- NYweath_crime %>% 
+  sample_frac(0.25) %>%
+  ggplot(aes(x = TMAX, y =NUM_ARREST)) + 
+  geom_point(aes(shape = PRCP_factor, colour = month)) +
+  labs(x = "Temperature (ºF)", y = "Number of Daily Arrests", 
+       title = "Weather Patterns for NYC Crime")
+NY_weathcrime_ggplot2
+
 
 ```
 Initially made a boxplot of precipitation to observe the distribution.. It is extremely skewed. However, because I'm only interested in determining if precipitation has an effect, will build a linear model using PRCP as a Factor.
@@ -309,6 +317,14 @@ NY_90s_weathstock_scatter <- ggplot(stockWeather_90s, aes(x = TMAX, y =Volume_no
   labs(x = "Temperature (ºF)", y = "Normalized Daily DOW Trade Volume (M)", 
        title = "Weather Patterns for DOW Trade Volume in the 1990s")
 NY_90s_weathstock_scatter
+
+NY_90s_weathstock_scatter2 <- stockWeather_90s %>% 
+  sample_frac(0.3) %>%
+  ggplot(aes(x = TMAX, y =Volume_norm)) + 
+  geom_point(aes(colour = month, shape = PRCP_factor)) +
+  labs(x = "Temperature (ºF)", y = "Normalized Daily DOW Trade Volume (M)", 
+       title = "Weather Patterns for DOW Trade Volume in the 1990s")
+NY_90s_weathstock_scatter2
 
 ```
 
