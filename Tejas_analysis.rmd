@@ -247,43 +247,37 @@ ggplot(DailyAQ_00_22) +
   labs(title="Distribution of Daily AQI Level", x="", y="Count")
 
 
-# yearly average and year-over year growth of daily AQI and PM2.5
-# TODO: same figure, separate plots
-ggplot(DailyAQ_00_22_Yearly_Growth, aes(group=1)) +
-  geom_line(aes(x = year, y = pm2.5_avg), stat="identity", color="#BD2AE2", size=1) +
-  geom_line(aes(x = year, y = aqi_avg), stat="identity", color="#2DD164", size=1) +
-  geom_point(aes(x = year, y = aqi_avg), na.rm = TRUE, fill="#457108", shape = 21) +
-  labs(title="Average PM2.5 particulate amount and AQI by year in NYC", x="Year", y="ug/m3 LC") +
-  scale_y_continuous(sec.axis = sec_axis(~., name="Year-over-year Diff (%)")) +
-  theme(
-    axis.title.y = element_text(color = "#BD2AE2", size = 13),
-    axis.title.y.right = element_text(color = "#290DDA", size = 13)
-  )
-
 # TODO: group these in same figure, separate plots
 ggplot(DailyAQ_00_22_Yearly_Growth, aes(group=1)) +
   geom_line(aes(x = year, y = pm2.5_diffRate), na.rm = T, stat = "identity", color="#290DDA", size=1) +
-  geom_line(aes(x = year, y = aqi_diffRate), na.rm = T, stat="identity", color="#043008", size=1) +
-  geom_point(aes(x = year, y = aqi_diffRate), na.rm = TRUE, fill="#E6E930", shape = 23) +
-  geom_point(aes(x = year, y = aqi_diffRate), na.rm = TRUE, fill="#E6E930", shape = 23) +
-  labs(title="PM2.5 particulate and AQI growth rate by year in NYC", x="Year", y="ug/m3 LC") +
+  geom_point(aes(x = year, y = pm2.5_diffRate), na.rm = TRUE, fill="#124CF2", shape = 23) +
+  labs(title="PM2.5 particulate year-over-year rate in NYC", x="Year", y="ug/m3 LC") +
   theme(
-    axis.title.y = element_text(color = "#2DD164", size = 13),
+    axis.title.y = element_text(color = "#043008", size = 13),
     axis.title.y.right = element_text(color = "#E6E930", size = 13)
   )
-
 
 ggplot(DailyAQ_00_22_Yearly_Growth, aes(group=1)) +
-  labs(title="AQI and growth rate and growht/decay rate by year in NYC", x="Year", y="ug/m3 LC") +
-  scale_y_continuous(sec.axis = sec_axis(~., name="Year-over-year Diff (%)")) +
+  geom_line(aes(x = year, y = aqi_diffRate), na.rm = T, stat="identity", color="#043008", size=1) +
+  geom_point(aes(x = year, y = aqi_diffRate), na.rm = TRUE, fill="#E6E930", shape = 23) +
+  labs(title="AQI year-over-year rate in NYC", x="Year", y="ug/m3 LC") +
   theme(
-    axis.title.y = element_text(color = "#2DD164", size = 13),
+    axis.title.y = element_text(color = "#043008", size = 13),
     axis.title.y.right = element_text(color = "#E6E930", size = 13)
   )
+
+
+# ggplot(DailyAQ_00_22_Yearly_Growth, aes(group=1)) +
+#   labs(title="AQI and growth rate and growht/decay rate by year in NYC", x="Year", y="ug/m3 LC") +
+#   scale_y_continuous(sec.axis = sec_axis(~., name="Year-over-year Diff (%)")) +
+#   theme(
+#     axis.title.y = element_text(color = "#2DD164", size = 13),
+#     axis.title.y.right = element_text(color = "#E6E930", size = 13)
+#   )
 
 ```
 
-Next, we will combine our new dataset with the NYC weather data based on the date. The days without a matching air quality measurement will be dropped after merge.
+Next, we combine our new dataset with the NYC weather data based on the date. The days without a matching air quality measurement will be dropped after merge.
  
 ```{r combine and clean data}
 # merge data frame by date
@@ -330,45 +324,96 @@ pairs.panels(DailyAQ_numerics,
 )
 ```
 Another way to look at correlation using the `corrplot` function:
+
 ```{r corrplot, fig.align = "center", fig.}
 DailyAQ_cor <- cor(DailyAQ_numerics)
 corrplot(DailyAQ_cor, method="number", title="Correlation Plot Of Weather and Air Quality Numerical Variables", mar = c(2, 2, 2, 2))
 ```
 
-From the pearson correlation plot above, we can see a significantly large, positive correlation between PM2.5 concentrations and the daily AQI values. This is expected as PM2.5 is significantly weighed in calculations of AQI. Unfortunately, the correlation significance among our weather and air quality variables is relatively weak. However, we will still attempt a linear model between them below.   
+From the pearson correlation plot above, we can see a significantly large, positive correlation between PM2.5 concentrations and the daily AQI values. This is expected as PM2.5 are heavily weighed in calculations of AQI. Unfortunately, the correlation significance among our weather and air quality variables is relatively weak. However, we will still attempt a linear model between them below.   
+
+```{r AQI vs year scatter}
+# yearly average and year-over year growth of daily AQI and PM2.5
+ggplot(DailyAQ_00_22_Yearly_Growth) +
+  geom_line(aes(x = year, y = aqi_avg), stat="identity", color="#2DD164", size=1) +
+  geom_point(aes(x = year, y = aqi_avg), na.rm = TRUE, fill="#457108", shape = 21) +
+  labs(title="Average AQI by year in NYC", x="Year", y="Year-over-year Diff (%)")
+
+ggplot(DailyAQ_00_22_Yearly_Growth) +
+  geom_line(aes(x = year, y = pm2.5_avg), stat="identity", color="#BD2AE2", size=1) +
+  geom_point(aes(x = year, y = pm2.5_avg), na.rm = TRUE, fill="#124CF2", shape = 21) +
+  labs(title="Average PM2.5 particulate amount by year in NYC", x="Year", y="Year-over-year Diff (%)")
+```
 
 #### Linear models
 
-Let's start by creating a linear model to describe the relationship between AQI and the variable we analyzed in our last project - TMAX - combined with the year.
+Let's start by creating a linear model to describe the relationship between AQI and year.
 
 ```{r linear model}
-aqi_fit <- lm(AQI ~ TMAX + TMIN + PRCP + SNOW, data = DailyAQ_numerics)
+aqi_fit <- lm(AQI ~ DATE, data = DailyAQ_merged)
 summary(aqi_fit)
 xkabledply(aqi_fit, title = paste("First Linear Model: ", format( formula(aqi_fit) )))
 ```
-The coefficients for each regressor is significant. TMIN and PRCP have a negative effect on daily AQI, while TMAX and SNOW have a positive effect on daily AQI. Although the p-value of the F-statistic is significant, the model regressors only explain a measly 0.9% of the variability in daily AQI measurements.  
 
-Check for multicollinearity
+The coefficient for the date regressor is significant, and has a negative effect on daily AQI by a very small factor of .005. Although the p-value of the F-statistic is significant, date still only explains 28% of the variability in daily AQI measurements.  
 
-```{r model 1 VIF}
-# model VIF scores
-xkablevif(aqi_fit, title = "VIF Of Model Covariates")
-```
-
-With a variance inflation factor of 12.4, we cannot accept TMAX and TMIN as regressors in our model.  
-
-Reversed fit
-```{r reversed model}
-api_fit_rev <- lm(TMAX ~ PM2.5, data = DailyAQ_numerics)
-summary(api_fit_rev)
-xkabledply(api_fit_rev, title = paste("Model :", format( formula(api_fit_rev) )))
+```{r lm plot}
+ggplot(DailyAQ_00_22, aes(x = DATE, y = AQI)) + 
+  geom_point(alpha = 0.5, color = "#47ABE9") +
+  labs(x = "Year", y = "AQI Value", title = "NYC Daily AQI Values From 2000-2022 And Trend Line") +
+  geom_smooth(method = 'lm', formula = 'y ~ x', color = "black", fill="black", se = TRUE)
 ```
 
 
 ##### Adding `month` as a categorical regressor
+In our first analysis, we analyzed linear trends of TMAX over time and determined a slight positive correlation observed over the years 1900-2022. Based on that fit, we hypothesized that seasonality trends had an impact on model performance which would be better explained by 
+
+We believe seasonality also effects daily AQI measurements. 
+
+```{r AQI vs year scatter}
+# NYC weather - Avg TMAX by month
+NYweath_Month %>%
+  dplyr::select(month, "Avg Max Temp.") %>%
+  gather(key="Value", value="Temp.", "Avg Max Temp.") %>%
+  ggplot(aes(x=month, y=Temp., fill=Value)) +
+  geom_col(na.rm=TRUE, alpha=0.5, color="black", position="identity") +
+  labs(title="Average Daily Maximum Temperature By Month", x="Month", y="Temperature (°F)") +
+  scale_fill_manual(values="red")
 
 
-Let's build a model adding `month` as a categorical regressor and see how it affects the fit. Since we deemed the multicollinearity between TMAX and TMIN to be too high, TMIN is dropped from the model equation. We also go ahead and drop the PRCP and 
+DailyAQ_monthly <- DailyAQ_merged %>%
+  group_by(month) %>%
+  summarize(pm2.5_avg = mean(PM2.5, na.rm=T),
+            aqi_avg = mean(AQI, na.rm=T))
+
+# calculate growth/decay rates month-over-month
+DailyAQ_monthly <- DailyAQ_monthly %>%
+  mutate(pm2.5_diffRate = ((pm2.5_avg - lag(pm2.5_avg)) / pm2.5_avg) * 100,
+         aqi_diffRate = ((aqi_avg - lag(aqi_avg)) / aqi_avg) * 100
+      )
+# populate January rates based on December
+DailyAQ_monthly[1, 4]$pm2.5_diffRate <- ((DailyAQ_monthly$pm2.5_avg[1] - DailyAQ_monthly$pm2.5_avg[12]) /  DailyAQ_monthly$pm2.5_avg[1]) * 100
+DailyAQ_monthly[1, 5]$aqi_diffRate <- ((DailyAQ_monthly$aqi_avg[1] - DailyAQ_monthly$aqi_avg[12]) /  DailyAQ_monthly$aqi_avg[1]) * 100
+
+# yearly average and year-over year growth of daily AQI and PM2.5
+# TODO: combine with month-over-month change plot
+ggplot(DailyAQ_00_22_Monthly, aes(x = as.numeric(month), y = aqi_avg)) +
+  geom_line(color="#47ABE9", size = 2) +
+  geom_point(na.rm = TRUE, fill="#C10808", shape = 21, size = 4) +
+  labs(title="Average AQI By Month in NYC", x="Month", y="AQI") +
+  scale_x_continuous(name = "Month",
+                     breaks = c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12))
+
+
+ggplot(DailyAQ_00_22_Monthly, aes(x = as.numeric(month), y = aqi_diffRate)) +
+  geom_line(na.rm = TRUE, stat="identity", color="#043008", size=2) +
+  geom_point(na.rm = TRUE, fill="#E6E930", shape = 21) +
+  labs(title="Average AQI month-over-month change rate", x="Month", y="AQI") +
+  scale_x_continuous(name = "Month",
+                     breaks = c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12))
+```
+
+Let's modify our last model adding `month` as a categorical regressor and our variable-of-interest from the last project - `TMAX` to predict daily AQI.
 
 ```{r second linear model}
 aqi_fit2 <- lm(AQI ~ TMAX + month, data = DailyAQ_merged)
@@ -376,21 +421,18 @@ summary(aqi_fit2)
 xkabledply(aqi_fit2, title = paste("Second Linear Model: ", format( formula(aqi_fit2) )))
 ```
 
+The regression coefficients for TMAX significant and positively correlated, with each degree increase resulting in AQI increasing by a factor of 0.68. All months, when compared to January, have a negative impact on AQI, with September having the largest (negative) slope. The p-value of the model's F-statistic is also significant, allowing us to reject the null hypothesis and conclude that there’s a significant relationship between our chosen predictors and the daily AQI value. However, the $R^2$ for our model is only `.149`, which indicates that only 14.7% of the variation in daily AQI can be explained by TMAX and month.  
+
+Seasonality can cause a poor linear model. Properly testing it would require developing a seasonality time-series model to properly fit the data.
+
 Check for multicollinearity
 
-```{r model 1 VIF}
+```{r model 1 VIF, }
 # model VIF scores
-xkablevif(aqi_fit2)
+xkablevif(aqi_fit2, title = "Model 2 VIF")
 ```
 
-The regression coefficients for month and TMAX are all significant, with TMAX having a positive effect on daily AQI. Each month has a negative effect on daily AQI when compared to January, with September having the largest (negative) slope. The VIF values of all regressors are acceptable.  
-
-The p-value of the model F-statistic is also significant, allowing us to reject the null hypothesis and conclude that there’s a significant relationship between our regressors, TMAX and month, and the daily AQI.  
-
-However, the $R^2$ for our model is only `.149`. This indicates that only 14.7% of the variation in daily AQI can be explained by TMAX and month.  
-
-Use ANOVA to compare models  
-Try Ridge on model with best fit?  
+The VIF values of all regressors are acceptable.  
 
 
 ### k-NN model to predict month based on weather and air quality data
