@@ -397,7 +397,7 @@ DailyAQ_monthly[1, 5]$aqi_diffRate <- ((DailyAQ_monthly$aqi_avg[1] - DailyAQ_mon
 
 # yearly average and year-over year growth of daily AQI and PM2.5
 # TODO: combine with month-over-month change plot
-ggplot(DailyAQ_00_22_Monthly, aes(x = as.numeric(month), y = aqi_avg)) +
+ggplot(DailyAQ_monthly, aes(x = as.numeric(month), y = aqi_avg)) +
   geom_line(color="#47ABE9", size = 2) +
   geom_point(na.rm = TRUE, fill="#C10808", shape = 21, size = 4) +
   labs(title="Average AQI By Month in NYC", x="Month", y="AQI") +
@@ -405,7 +405,7 @@ ggplot(DailyAQ_00_22_Monthly, aes(x = as.numeric(month), y = aqi_avg)) +
                      breaks = c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12))
 
 
-ggplot(DailyAQ_00_22_Monthly, aes(x = as.numeric(month), y = aqi_diffRate)) +
+ggplot(DailyAQ_monthly, aes(x = as.numeric(month), y = aqi_diffRate)) +
   geom_line(na.rm = TRUE, stat="identity", color="#043008", size=2) +
   geom_point(na.rm = TRUE, fill="#E6E930", shape = 21) +
   labs(title="Average AQI month-over-month change rate", x="Month", y="AQI") +
@@ -413,7 +413,7 @@ ggplot(DailyAQ_00_22_Monthly, aes(x = as.numeric(month), y = aqi_diffRate)) +
                      breaks = c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12))
 ```
 
-Let's modify our last model adding `month` as a categorical regressor and our variable-of-interest from the last project - `TMAX` to predict daily AQI.
+Let's modify our last model to attempt to fit seasonality by adding `month` as a categorical regressor and our variable-of-interest from the last project - `TMAX` - to predict daily AQI.
 
 ```{r second linear model}
 aqi_fit2 <- lm(AQI ~ TMAX + month, data = DailyAQ_merged)
@@ -437,57 +437,22 @@ The VIF values of all regressors are acceptable.
 
 ### k-NN model to predict month based on weather and air quality data
 
+A k-NN model can help us further analyze the seasonality effect by attempting to predict the month based on `AQI` and `TMAX` variables.  
+
 Evaluate relationships via scatter plots
   - scale and center data  
-  - scatter plots of AQI,PM25,TMAX,TMIN,PRCP colored by month  
+  - scatter plots of AQI,TMAX  
   - check composition of labels (months) 
   
-Seasonality of TMAX and PM2.5/AQI?
-```{r seasonality plots}
-# TODO: combine into 1 figure
-# TODO: remove TMIN
-# monthly average bar charts
-NYweath_Monthly_Avg <- NYweath_00 %>%
-  group_by(month) %>%
-  summarize("Avg Max Temp." = mean(TMAX, na.rm=T),
-            "Avg Min Temp." = mean(TMIN, na.rm=T))
-NYweath_Monthly_Avg %>%
-  dplyr::select(month, "Avg Max Temp.", "Avg Min Temp.") %>%
-  gather(key="Value", value="Temp", "Avg Max Temp.", "Avg Min Temp.") %>%
-  ggplot(aes(x=month, y=Temp, fill=Value)) +
-  geom_col(na.rm=TRUE, alpha=0.5, color="black", position="dodge") +
-  labs(title="Average Daily Max Temperature By Month", x="Month", y="Temperature (°F)") +
-  scale_fill_manual(values=c("red", "blue"))
-
-_Monthly_Avg <-  %>%
-  group_by(month) %>%
-  summarize("Avg AQI" = mean(TMAX, na.rm=T),
-NYweath_Monthly_Avg %>%
-  dplyr::select(month, "Avg Max Temp.", "Avg Min Temp.") %>%
-  gather(key="Value", value="Temp", "Avg Max Temp.", "Avg Min Temp.") %>%
-  ggplot(aes(x=month, y=Temp, fill=Value)) +
-  geom_col(na.rm=TRUE, alpha=0.5, color="black", position="dodge") +
-  labs(title="Average Daily Max Temperature By Month", x="Month", y="Temperature (°F)") +
-  scale_fill_manual(values=c("red", "blue"))
-
-# scatters
-#ggplot(DailyAQ_merged) +
- #     geom_point(aes(x=DATE, y=PM2.5, color=month))
-```
+Plot variables
   
-```{r scatter plots}
-daq_length = length(DailyAQ_merged)
-
-for (xx in 4:(daq_length - 2)) {
-  for (yy in (xx+1):(daq_length - 1)) {
-    p <- ggplot(DailyAQ_merged, aes(x=DailyAQ_merged[,xx], y=DailyAQ_merged[,yy], color=month)) +
-      geom_point() +
-      labs(x = colnames(DailyAQ_merged)[xx],
-           y = colnames(DailyAQ_merged)[yy],
-           title = paste(colnames(DailyAQ_merged)[yy],"vs",colnames(DailyAQ_merged)[xx]))
-    print(p)
-  }
-}
+```{r scatter plots, fig.width=4, fig.height=2}
+ggplot(DailyAQ_merged) +
+    geom_point(aes(x=AQI, y=TMAX, color=month), alpha = 0.7) +
+    labs(title = "Daily Maximum Temperature vs Daily Air Quality Index Value Distinguished By Month",
+         x = "Daily AQI Value",
+         y = "Daily Maximum Temperature (F)") +
+  scale_color_brewer(palette = "Paired")
 ```
 
 Center and scale our data
@@ -508,49 +473,72 @@ DailyAQ_test <- DailyAQ_scaled[DailyAQ_sample == 2, ]
 
 DailyAQ_trainLabels <- DailyAQ_merged[DailyAQ_sample == 1, 3]
 DailyAQ_testLabels <- DailyAQ_merged[DailyAQ_sample == 2, 3]
+
+nrow(DailyAQ_training)
+nrow(DailyAQ_test)
 ```
 
-
-Run k-NN model
-  - Evaluate model accuracy, precision, (others?)
-  - cross validation to find best `k` value
+Build kNN model
   
 ```{r kNN model}
 # set kval
 kval <- 3
 
-# model
+# build model
 DailyAQ_pred <- knn(train = DailyAQ_training,
                     test = DailyAQ_test,
                     cl = DailyAQ_trainLabels,
                     k = kval)
 
-#CrossTable(DailyAQ_testLabels, DailyAQ_pred, prop.chisq = FALSE)
+# confusion matrix
 DailyAQ_confusionMatrix <- caret::confusionMatrix(DailyAQ_pred, reference = DailyAQ_testLabels)
 DailyAQ_pred_accuracy <- DailyAQ_confusionMatrix$overall['Accuracy']
-print(paste("Total Accuracy = ", DailyAQ_pred_accuracy))
 
 
 xkabledply(as.matrix(DailyAQ_confusionMatrix), title = paste("ConfusionMatrix for k = ", kval))
 xkabledply(data.frame(DailyAQ_confusionMatrix$byClass), title=paste("k = ", kval))
 ```
 
-```{r more kNN analysis}
-DailyAQ_cm_result <- data.frame(k=numeric(0), Total.Accuracy= numeric(0), row.names = NULL)
+How does *k* affect classification accuracy?
 
-for (kval in 4:13) {
-  DailyAQ_pred <- knn(train = DailyAQ_training,
-                    test = DailyAQ_test,
-                    cl = DailyAQ_trainLabels,
-                    k = kval)
+```{r evaluate for range of k}
+evaluateK = function(k, train_set, val_set, train_class, val_class){
   
-  DailyAQ_confusionMatrix <- caret::confusionMatrix(DailyAQ_pred, reference = DailyAQ_testLabels)
-  DailyAQ_pred_accuracy <- DailyAQ_confusionMatrix$overall['Accuracy']
+  # Build knn with k neighbors considered.
+  set.seed(1000)
+  class_knn = knn(train = train_set,    #<- training set cases
+                  test = val_set,       #<- test set cases
+                  cl = train_class,     #<- category for classification
+                  k = k)                #<- number of neighbors considered
   
-  # initialize a row of the metrics 
-  cmt = data.frame(k = kval, Total.Accuracy = DailyAQ_pred_accuracy, row.names = NULL ) 
-  DailyAQ_cm_result <- rbind(DailyAQ_cm_result, cmt)
+  tab = table(class_knn, val_class)
+  
+  # Calculate the accuracy.
+  accu = sum(tab[row(tab) == col(tab)]) / sum(tab)                         
+  cbind(k = k, accuracy = accu)
 }
 
-xkabledply(DailyAQ_cm_result, "Total Accuracy Summary")
+# call evaluateK function for each odd k-value between 1 to 21
+knn_different_k = sapply(seq(1, 21, by = 2),
+                         function(x) evaluateK(x, 
+                                             train_set = DailyAQ_training,
+                                             val_set = DailyAQ_test,
+                                             train_class = DailyAQ_trainLabels,
+                                             val_class = DailyAQ_testLabels))
+
+# Reformat the results
+knn_different_k = data.frame(k = knn_different_k[1,],
+                             accuracy = knn_different_k[2,])
 ```
+
+```{r accuracy vs k plot}
+
+ggplot(knn_different_k, aes(x = k, y = accuracy)) +
+  geom_line(color = "orange", size = 1.5) +
+  geom_point(size = 3) + 
+  labs(title = "kNN Model Accuracy vs k-value",
+       x = "Model k-value",
+       y = "Accuracy")
+```
+
+It seems 13-nearest neighbors is a decent choice because that's the greatest improvement in predictive accuracy before the incremental improvement trails off. With an accuracy of `r knn_different_k[7, 2]`, our model predicting month based on `TMAX` and `AQI` is not a strong fit.  
