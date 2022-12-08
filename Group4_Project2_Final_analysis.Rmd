@@ -1,6 +1,6 @@
 ---
-title: "Project2_Outline"
-author: "Team Awesomeness C, T, E"
+title: "Project 2 Code Analysis"
+author: "Team Awesomeness (Team 4): Chris, Tejas, Emily"
 date: "`r Sys.Date()`"
 output:
   html_document:
@@ -318,7 +318,7 @@ ggplot(DailyAQ_00_22_Yearly_Growth, aes(group=1)) +
 ggplot(DailyAQ_00_22_Yearly_Growth, aes(group=1)) +
   geom_line(aes(x = year, y = aqi_diffRate), na.rm = T, stat="identity", color="#043008", size=1) +
   geom_point(aes(x = year, y = aqi_diffRate), na.rm = TRUE, fill="#E6E930", shape = 23) +
-  labs(title="AQI year-over-year rate in NYC", x="Year", y="ug/m3 LC") +
+  labs(title="AQI year-over-year rate in NYC", x="Year", y="AQI") +
   theme(
     axis.title.y = element_text(color = "#043008", size = 13),
     axis.title.y.right = element_text(color = "#E6E930", size = 13)
@@ -1210,6 +1210,12 @@ prcp_pr2
 
 This is NOT a good logistic regression!!!
 
-## Summary of Key Findings  
+## Summary of Key Findings
 
-## Conclusion  
+We have statistically significant correlations on models using weather, air quality, and human activity data from NYC, but none of our models demonstrate high predictive potential.  
+
+Challenges with data – data were not ideal for our initial hypotheses– cannot reject or accept. Would need better data!  
+
+Cannot model seasonality with linear regressions. Potentially need to use seasonality-adjusted time-series models for better outcomes.  
+
+What data would enable us to answer the question if we had more time?
