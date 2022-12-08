@@ -496,24 +496,126 @@ The linear model that only incorporates TMAX, PRCP_factor, and year has statisti
 However, when we account for month, we lose the significance in the TMAX variable. This indicates that the covid cases are more effected by the seasonal changes rather than Temperature.
 
 
-Let's try to graph this!
+Let's try to graph this! That did not work!
 
 ```{r}
 
-covLM_plot <- covWeath_final_scatter + 
-  geom_smooth(method = lm, se = FALSE, fullrange = TRUE,
-              aes(colour = PRCP_factor))
-covLM_plot
+#covLM_plot <- covWeath_final_scatter + 
+ # geom_smooth(method = lm, se = FALSE, fullrange = TRUE,
+              #aes(colour = PRCP_factor))
+#covLM_plot
   
 #ggplt
   
 # Plotting multiple Regression Lines
-ggplt+geom_smooth(method=lm,se=FALSE,fullrange=TRUE,
-                  aes(color=Tree))
+#ggplt+geom_smooth(method=lm,se=FALSE,fullrange=TRUE,
+   #               aes(color=Tree))
 
-covLM_plot
+#covLM_plot
 
 
+
+```
+
+
+
+
+### LR to predict Precipitation!
+
+Let's start by ingesting the Air Quality to add into this prediction in place of COVID.
+
+```{r load csvs}
+DailyAQ_00_22 <- data.frame(read.csv("data/daily-AQ-NY-00-20.csv"))
+DailyAQ_00_22 <- DailyAQ_00_22[c('Date', 'Daily.Mean.PM2.5.Concentration', 'DAILY_AQI_VALUE')]
+colnames(DailyAQ_00_22) <- c('DATE', 'PM2.5', 'AQI')
+str(DailyAQ_00_22)
+xkablesummary(DailyAQ_00_22)
+xkabledplyhead(DailyAQ_00_22)
+```
+
+Now let's build a master dataframe that incorporates Date, Year, Month, TMAX, PRCP, PRCP_Factor, 
+Crime Count, 
+DOW Volume, 
+PM2.5, and AQI.
+
+```{r}
+
+# FORMAT AQ Data and subset dates
+AQ_forLogit <- DailyAQ_00_22
+AQ_forLogit$DATE <- as.Date(AQ_forLogit$DATE, format = "%m/%d/%y")
+AQ_forLogit$day <- format(AQ_forLogit$DATE, format="%d")
+AQ_forLogit$month <- format(AQ_forLogit$DATE, format="%m")
+AQ_forLogit$year <- format(AQ_forLogit$DATE, format="%Y")
+AQ_forLogit$year <- as.numeric(AQ_forLogit$year)
+
+AQ_forLogit2 <- AQ_forLogit %>% 
+  complete(DATE = seq.Date(min(DATE), max(DATE), by="day"))
+
+AQ_masterDates <- subset(AQ_forLogit2, year >= 2006 & year < 2022)
+
+
+stock_masterDates <- subset(NYstock_final,Date >= "2006-01-01" &
+                              Date <= "2021-12-31")
+
+crime_masterDates <- NYcrime_count
+
+weath_masterDates <- subset(NYweath_prcpFact, year >= 2006 & year < 2022) 
+
+
+master_log <- cbind(weath_masterDates,
+                    crime_masterDates$NUM_ARREST,
+                    stock_masterDates$Vol.)
+colnames(master_log)[12:13] <- c('NUM_ARREST', 'Volume')
+
+head(master_log)
+
+
+```
+
+```{r}
+
+master_logFinal <- subset(master_log, !is.na(Volume))
+master_logFinal$Volume_norm <- sqrt(master_logFinal$Volume)
+
+```
+
+Now let's build the LR:
+
+```{r}
+
+prcp_logit <- glm(PRCP_factor ~ TMAX + NUM_ARREST +
+                    Volume_norm + year + month,
+                  data = master_logFinal,
+                  family = binomial(link = "logit"))
+
+summary(prcp_logit)
+
+```
+
+Let's assess the LR!
+
+```{r}
+library(ModelMetrics)
+prcpLR_cm <- confusionMatrix(actual = prcp_logit$y, 
+                  predicted = prcp_logit$fitted.values)
+prcpLR_cm
+
+prcpLR_acc <- (prcpLR_cm[2,2] + prcpLR_cm[1,1])/(sum(prcpLR_cm))
+prcpLR_prec <- (prcpLR_cm[2,2])/(prcpLR_cm[2,2]+prcpLR_cm[1,2])
+prcpLR_rec <- (prcpLR_cm[2,2])/(prcpLR_cm[2,2]+prcpLR_cm[2,1])
+prcpLR_spec <- (prcpLR_cm[1,1])/(prcpLR_cm[1,1]+prcpLR_cm[1,2])
+
+library(pROC)
+
+master_logFinal$prob=predict(prcp_logit, type = c("response"))
+prcp_roc <- roc(PRCP_factor ~ prob, data = master_logFinal)
+prcp_auc <- auc(prcp_roc)
+prcp_auc
+plot(prcp_roc)
+
+library(pscl)
+prcp_pr2 <- pR2(prcp_logit)
+prcp_pr2
 
 ```
 
