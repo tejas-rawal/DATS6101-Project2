@@ -169,7 +169,7 @@ rainedLogitHoslem = hoslem.test(NYweath.rain$rained, fitted(rainedLogit))
 rainedLogitHoslem
 ```
 
-The p-value of `r admitLogitHoslem$p.value` is very low which indicates that the model is a good fit.
+The p-value of `r rainedLogitHoslem$p.value` is very low which indicates that the model is a good fit.
 
 #### ROC/AUC
 ```{r titanic logic roc/auc}
@@ -299,6 +299,7 @@ DailyAQ_numerics <- DailyAQ_merged[ , c('PM2.5', 'AQI', 'TMAX', 'TMIN', 'PRCP', 
 # combine PRCP and SNOW into single value
 #DailyAQ_numerics$PRCP <- DailyAQ_numerics$PRCP + DailyAQ_numerics$SNOW
 #DailyAQ_numerics <- subset(DailyAQ_numerics, select = -c(SNOW))
+DailyAQ_numerics$year <- DailyAQ_numerics$year - 2000 
 ```
 
 #### Correlation analysis
@@ -320,14 +321,14 @@ pairs.panels(DailyAQ_numerics,
 ```
 Another way to look at correlation using the `corrplot` function:
 
-```{r corrplot, fig.align = "center", fig.}
+```{r corrplot, fig.align = 'center'}
 DailyAQ_cor <- cor(DailyAQ_numerics)
 corrplot(DailyAQ_cor, method="number", title="Correlation Plot Of Weather and Air Quality Numerical Variables", mar = c(2, 2, 2, 2))
 ```
 
 From the pearson correlation plot above, we can see a significantly large, positive correlation between PM2.5 concentrations and the daily AQI values. This is expected as PM2.5 are heavily weighed in calculations of AQI. Unfortunately, the correlation significance among our weather and air quality variables is relatively weak. However, we will still attempt a linear model between them below.   
 
-```{r AQI vs year scatter}
+```{r AQI and PM2.5 vs year}
 # yearly average and year-over year growth of daily AQI and PM2.5
 ggplot(DailyAQ_00_22_Yearly_Growth) +
   geom_line(aes(x = year, y = aqi_avg), stat="identity", color="#2DD164", size=1) +
@@ -345,7 +346,7 @@ ggplot(DailyAQ_00_22_Yearly_Growth) +
 Let's start by creating a linear model to describe the relationship between AQI and year.
 
 ```{r linear model}
-aqi_fit <- lm(AQI ~ DATE, data = DailyAQ_merged)
+aqi_fit <- lm(AQI ~ year, data = DailyAQ_numerics)
 summary(aqi_fit)
 xkabledply(aqi_fit, title = paste("First Linear Model: ", format( formula(aqi_fit) )))
 ```
@@ -353,27 +354,33 @@ xkabledply(aqi_fit, title = paste("First Linear Model: ", format( formula(aqi_fi
 The coefficient for the date regressor is significant, and has a negative effect on daily AQI by a very small factor of .005. Although the p-value of the F-statistic is significant, date still only explains 28% of the variability in daily AQI measurements.  
 
 ```{r lm plot}
-ggplot(DailyAQ_00_22, aes(x = DATE, y = AQI)) + 
-  geom_point(alpha = 0.5, color = "#47ABE9") +
-  labs(x = "Year", y = "AQI Value", title = "Daily AQI Values From 2000-2022 And Trend Line") +
-  geom_smooth(method = 'lm', formula = 'y ~ x', color = "black", fill="black", se = TRUE)
+ggplot(DailyAQ_00_22, aes(x = year, y = AQI)) + 
+  geom_point(alpha = 0.5, color = "#2DD164", position = "jitter") +
+  labs(x = "Year", y = "AQI Value", title = "Daily AQI Values From 2000-2022 With Trend Line") +
+  geom_smooth(method = 'lm', formula = 'y ~ x', color = "black", fill="black")
 ```
 
+The plot displays a slightly downward treng in daily AQI, but there is a lot of noise distorting the fit.
 
 ##### Adding `month` as a categorical regressor
 In our first analysis, we analyzed linear trends of TMAX over time and determined a slight positive correlation observed over the years 1900-2022. Based on that fit, we hypothesized that seasonality trends had an impact on model performance.
 
 We believe seasonality also effects daily AQI measurements. 
 
-```{r AQI vs year scatter}
+```{r average AQI and TMAX vs year}
 # NYC weather - Avg TMAX by month
-NYweath_Month %>%
-  dplyr::select(month, "Avg Max Temp.") %>%
-  gather(key="Value", value="Temp.", "Avg Max Temp.") %>%
-  ggplot(aes(x=month, y=Temp., fill=Value)) +
-  geom_col(na.rm=TRUE, alpha=0.5, color="black", position="identity") +
-  labs(title="Average Daily Maximum Temperature By Month", x="Month", y="Temperature (°F)") +
-  scale_fill_manual(values="red")
+NYweath_Monthly_Avg <- NYweath_00 %>%
+  group_by(month) %>%
+  summarize(avg_max_temp = mean(TMAX, na.rm=T),
+            avg_min_temp = mean(TMIN, na.rm=T))
+
+
+ggplot(NYweath_Monthly_Avg, aes(x = as.numeric(month), y = avg_max_temp)) +
+  geom_line(color="#F21E1E", size = 2) +
+  geom_point(na.rm = TRUE, fill="#126BF4", shape = 21, size = 4) +
+  labs(title="Average TMAX By Month in NYC", x="Month", y="Temperature (°F)") +
+  scale_x_continuous(name = "Month",
+                     breaks = c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12))
 
 
 DailyAQ_monthly <- DailyAQ_merged %>%
@@ -416,7 +423,7 @@ summary(aqi_fit2)
 xkabledply(aqi_fit2, title = paste("Second Linear Model: ", format( formula(aqi_fit2) )))
 ```
 
-The regression coefficient for TMAX is significant and positively correlated, with each degree increase resulting in AQI increasing by a factor of 0.68. All months, when compared to January, have a negative impact on AQI, with September having the largest (negative) slope. The p-value of the model's F-statistic is also significant, allowing us to reject the null hypothesis and conclude that there’s a significant relationship between our chosen predictors and the daily AQI value. However, the $R^2$ for our model is only `.149`, which indicates that only 14.7% of the variation in daily AQI can be explained by TMAX and month.  
+The regression coefficient for TMAX is significant and positively correlated, with each degree increase resulting in AQI increasing by a factor of 0.68. All months, when compared to January, have a negative impact on AQI, with September having the largest difference. The p-value of the model's F-statistic is also significant, allowing us to reject the null hypothesis and conclude that there’s a significant relationship between our chosen predictors and the daily AQI value. However, the $R^2$ for our model is only `.149`, which indicates that only 14.7% of the variation in daily AQI can be explained by TMAX and month.  
 
 Seasonality can cause a poor linear model. Properly testing it would require developing a seasonality time-series model to properly fit the data.
 
