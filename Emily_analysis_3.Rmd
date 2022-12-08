@@ -1,0 +1,331 @@
+---
+title: "Project2_Outline"
+author: "Team Awesomeness C, T, E"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    code_folding: hide
+    number_sections: false
+    toc: yes
+    toc_depth: 3
+    toc_float: yes
+  pdf_document:
+    toc: yes
+    toc_depth: '3'
+---
+
+```{r include=FALSE}
+# The package "ezids" (EZ Intro to Data Science) includes a lot of the helper functions we developed for the course. 
+# Some of the frequently used functions are loadPkg(), xkabledply(), xkablesummary(), uzscale(), etc.
+library(ezids)
+ 
+# some of common options (and the defaults) are: 
+# include=T, eval=T, echo=T, results='hide'/'asis'/'markup',..., collapse=F, warning=T, message=T, error=T, cache=T, fig.width=6, fig.height=4, fig.dim=c(6,4) #inches, fig.align='left'/'center','right', 
+# knitr::opts_chunk$set(warning = F, results = "markup", message = F)
+knitr::opts_chunk$set(warning = F, results = "markup", message = F)
+options(scientific=T, digits = 3) 
+# options(scipen=9, digits = 3) 
+# ‘scipen’: integer. A penalty to be applied when deciding to print numeric values in fixed or exponential notation.  Positive values bias towards fixed and negative towards scientific notation: fixed notation will be preferred unless it is more than ‘scipen’ digits wider.
+# use scipen=999 to prevent scientific notation at all times
+```
+
+```{r data init}
+#loading packages 
+library(ezids)
+library(ggplot2)
+library(ggrepel)
+library(gridExtra)
+library(tibble)
+library(dplyr)
+library(tidyr)
+
+```
+
+```{r}
+#loading data 
+NYweath <- data.frame(read.csv("data/NYC_weather_1869_2022.csv"))
+
+#converting to R date format and adding columns for day, month, and year
+NYweath$DATE <- as.Date(NYweath$DATE)
+NYweath$day <- format(NYweath$DATE, format="%d")
+NYweath$month <- format(NYweath$DATE, format="%m")
+NYweath$year <- format(NYweath$DATE, format="%Y")
+#converting temperature observations to numerical
+NYweath$TMAX <- as.numeric(NYweath$TMAX)
+NYweath$TMIN <- as.numeric(NYweath$TMIN)
+NYweath$TAVG <- as.numeric(NYweath$TAVG)
+NYweath$year <- as.numeric(NYweath$year)
+#Making month a factor
+NYweath$month <- as.factor(NYweath$month)
+# subset data to desired variables
+
+#new data loading from Emily, New York State population from 1900 on 
+NYSPop_1900 <- data.frame(read.csv("data/NYSPop_1900-2021.csv"))
+NYSPop_1900$Population <- as.numeric(NYSPop_1900$Population)
+NYSPop_1900$Year <- as.numeric(NYSPop_1900$Year)
+
+#subsetting variables of interest
+NYweath_sub <- subset(NYweath, select = c(DATE, day, month, year, TMAX, TMIN, TAVG, PRCP, SNOW)) 
+#creating a subset for 1900 on
+NYweath_00 <- subset(NYweath_sub, year > 1899)
+NYweath_00 <- subset(NYweath_00, year < 2022)
+
+#creating a subset for 1970 on
+NYweath_70 <- subset(NYweath_00, year > 1969)
+NYweath_70 <- subset(NYweath_70, year < 2022)
+
+for(i in 1:length(NYweath_00$year)){
+  (NYweath_00$Pop[i]= NYSPop_1900$Population[(which(NYSPop_1900$Year == NYweath_00$year[i]))]
+  )}
+
+#New from Emily
+#New data loading from Emily, shootings
+NYshoot <- data.frame(read.csv("data/Shooting_Counts_ERG.csv"))
+
+#converting to R date format and adding columns for day, month, and year
+NYshoot$DATE <- as.Date(NYshoot$Date, format = "%m/%d/%Y")
+
+```
+
+```{r}
+#cleaning shooting data, merging with NYweath_00
+
+NYweathshoot_06 <- subset (NYweath_00, year > 2005)
+NYweathshoot_06 <- subset (NYweathshoot_06, year < 2022)
+#str(NYweathshoot_06)
+#str(NYshoot)
+
+NYweathshoot_06 <- full_join(NYshoot, NYweathshoot_06, by = "DATE")
+
+NYweathshoot_06$day <- format(NYweathshoot_06$DATE, format="%d")
+NYweathshoot_06$month <- format(NYweathshoot_06$DATE, format="%m")
+NYweathshoot_06$year <- format(NYweathshoot_06$DATE, format="%Y")
+NYweathshoot_06$day <- as.numeric(NYweathshoot_06$day)
+NYweathshoot_06$month <- as.numeric(NYweathshoot_06$month)
+NYweathshoot_06$year <- as.numeric(NYweathshoot_06$year, format="%Y")
+NYweathshoot_06 <- NYweathshoot_06 %>% mutate(Shootings = ifelse(is.na(Shootings), 0, Shootings))
+summary(NYweathshoot_06)
+
+#NYweathshoot_06$shoot <- NYshoot$Shootings
+#NYweathshoot_06$murder <- NYshoot$Murders
+
+
+```
+
+```{r}
+# correlation between shooting & weather data
+NYweathshoot_06_cor <- subset(NYweathshoot_06, select = c(year, day, TMAX, PRCP, SNOW, Shootings, Murders))
+str(NYweathshoot_06_cor)
+shootcor <- cor(NYweathshoot_06_cor, use = "pairwise.complete.obs")
+corrplot::corrplot(shootcor)
+cor
+```
+
+```{r}
+ggplot(NYweathshoot_06) +
+  geom_histogram(aes(x=Shootings), na.rm=TRUE, alpha=0.5, color="black", bins=100, binwidth=2, fill = "green") + 
+  labs(title="Distribution of daily NYC shootings (2006-2021)", x="Number of daily Shootings", y="Count")
+
+#Not quite normal-- necessarily right-skewed, but a lot of data points...
+
+```
+```{r average # shootings bar plot, results='asis'}
+shoot_Month <- NYweathshoot_06 %>%
+  group_by(month) %>%
+  summarize("Shootings" = mean(Shootings, na.rm=T),
+            "Shooting murders" = mean(Murders, na.rm=T))
+
+# side-by-side bar plot
+shoot_Month %>%
+  dplyr::select(month, "Shootings", "Shooting murders") %>%
+  gather(key="Value", value="Count", "Shootings", "Shooting murders") %>% 
+  ggplot(aes(x=month, y=Count, fill=Value)) +
+  geom_col(na.rm=TRUE, alpha=0.5, color="black", position="dodge") +
+  labs(title="Average NYC daily shootings (2006-2021) by month", x="Month", y="Number of shootings") +
+  scale_fill_manual(values=c("red", "blue"))
+
+```
+
+```{r}
+#making scatter plot of Shootings v TMAX
+ggplot(NYweathshoot_06, aes(x = TMAX, y = Shootings, color = month)) +
+    geom_point() +
+  #  scale_color_gradient(low="red", high="blue") +   
+  #scale_color_manual(values = c("01" = "purple4",
+#                                   "07" = "red"), na.value = NA) +
+    #geom_abline(aes(intercept = -11.05508, slope = 0.02539), col = "black", size = 1) + 
+    labs(
+        x = "Year",
+        y = "Maximum Daily Temperature",
+        title = "Maximum Daily Temperature in Central Park") +
+    xlab(label = "TMAX (degrees Fahrenheit)") +
+    ylab(label = "# Shootings") +
+    ggtitle(label = "Number of NYC Shootings v. TMAX")
+```
+
+```{r}
+#modeling Shootings
+
+#shoot_lm <- lm(formula = Shootings ~ year + month + day + SNOW + PRCP + TMAX + TMIN, data = NYweathshoot_06) 
+NYweathshoot_06$month <- as.factor(NYweathshoot_06$month)
+#shoot_lm <- lm(formula = Shootings ~ year + month + SNOW + PRCP + TMAX, data = NYweathshoot_06) 
+shoot_lm <- lm(formula = Shootings ~ year + SNOW + PRCP + TMAX, data = NYweathshoot_06) 
+summary(shoot_lm) 
+
+```
+
+## Introduction  
+
+In this project, we are digging into the relationship between human activity and weather in New York city. Our three driving questions are:  
+
+1. How do changes in NYC weather patterns correlate to changes in population and economic activity over the same time frame?  
+
+2. How do changes in NYC weather patterns correlate to changes in other urban climate factors such as air quality?  
+
+3. How do changes in weather patterns correlate to other local human activity, such as  crime, reported COVID cases, and stock market performance?  
+
+
+## Local weather and global and local human environmental footprint
+
+At the end of our exploratory data analysis, we developed a linear model of maximum daily temperature over time, with year as a linear regressor. This revealed to us that there is a statistically significant increase in average maximum temperatures over time. However, we do not suspect that time is the cause-- rather, it is something else that has changed over time that has caused the warming in New York. We wanted to explore correlations with other, more direct proxies for human activity. 
+
+Our original fit used year as a numerical regressor and month as a categorical regressor. The resulting fit has an r-squared value of 0.775 and a slope of 0.025 degrees Fahrenheit per year, with all fit parameters' p-values well below 0.05. The different intercepts for the each level of the categorical variable (the twelve months of the year) indicated that January is the coldest and July the hottest month in Central Park, with an average difference in maximum daily temperature of approximately 46 degrees Fahrenheit in any given year over this window.  
+
+
+```{r}
+maxTfit00_ym <- lm(formula = TMAX ~ year + month, data = NYweath_00 )
+res00_ym <- residuals(maxTfit00_ym)
+summary(maxTfit00_ym)  
+
+```
+
+The two extremes and their linear models are plotted in the following figure.  
+
+
+```{r}
+#plot of just July and January
+
+ggplot(NYweath_00, aes(x = year, y = TMAX, color = month)) +
+    geom_point() +
+    scale_color_manual(values = c("01" = "purple4",
+                                   "07" = "red"), na.value = NA) +
+    geom_abline(aes(intercept = -11.05508, slope = 0.02539), col = "black", size = 1) + 
+    geom_abline(aes(intercept = 34.98295, slope = 0.02539), col = "black", size = 1) +
+  
+    labs(
+        x = "Year",
+        y = "Maximum Daily Temperature",
+        title = "Maximum Daily Temperature in Central Park") +
+    xlab(label = "Year") +
+    ylab(label = "Maximum daily temperature") +
+    ggtitle(label = "Maximum Daily Temperature in Central Park")
+```
+
+
+Do other weather variables correlate to TMAX?
+
+```{r}
+NYweath_cor <- subset(NYweath_00, select = c(year, TMAX, PRCP, SNOW))
+str(NYweath_cor)
+weathcor <- cor(NYweath_cor, use = "pairwise.complete.obs")
+corrplot::corrplot(weathcor)
+cor
+
+```
+
+We have found a reasonable linear model for temperature over time, but can we look instead at the connection to human activities, rather than time? Can we use some aspect of human activity as a regressor and generate a reasonable model?
+
+
+We looked to the Census for U.S. population data, but that is only reported decennially, so we looked for other sources. We found historical data back to 1960 for New York state online https://www.macrotrends.net/cities/23083/new-york-city/population. Because this source is not known to us, we validated it against decennial census data.  
+
+
+A bunch of linear models...
+
+```{r}
+maxTfit00_m <- lm(formula = TMAX ~ month, data = NYweath_00)
+summary(maxTfit00_m)  
+
+```
+
+```{r}
+maxTfit00_all <- lm(formula = TMAX ~ year + month + PRCP, data = NYweath_00 )
+summary(maxTfit00_all)  
+
+```
+
+```{r}
+maxTfit00_all_intrxn <- lm(formula = TMAX ~ year + month*day + PRCP + SNOW, data = NYweath_00 )
+summary(maxTfit00_all)  
+
+```
+```{r}
+anova(maxTfit00_m, maxTfit00_ym)
+
+```
+
+```{r}
+anova(maxTfit00_all, maxTfit00_all_intrxn)
+```
+
+
+```{r}
+maxTfit00_pop <- lm(formula = TMAX ~ Pop + month, data = NYweath_00)
+summary(maxTfit00_pop)  
+
+```
+```{r}
+maxTfit00_pop_all <- lm(formula = TMAX ~ Pop + month + PRCP, data = NYweath_00)
+summary(maxTfit00_pop)  
+
+```
+
+```{r}
+#plot of NYS Pop over time
+
+ggplot(NYweath_00, aes(x = year, y = Pop)) +
+    geom_point() +
+#    geom_abline(aes(intercept = -11.05508, slope = 0.02539), col = "black", size = 1) + 
+    labs(
+        x = "Year",
+        y = "New York State Population",
+        title = "Annual Population of New York State") +
+    xlab(label = "Year") +
+    ylab(label = "New York State Population") +
+    ggtitle(label = "Maximum Daily Temperature in Central Park")
+```
+
+
+```{r}
+
+NYweath_50 <- subset(NYweath_00, year > 1949)
+NYweath_50_Jul <- subset(NYweath_50, month == "07")
+xkabledplyhead(NYweath_50_Jul)/
+NYweath_50_Jul_TMAX <- subset(NYweath_50_Jul, select = c(year, TMAX)) 
+NYweath_50_Jul_TMAX$Pop <- Pop
+#str(NYweath_50_Jul)
+#str(NYCPop_1950)
+
+NYweath_50 <- subset(NYweath_00, year > 1949)
+NYweath_50_Jan <- subset(NYweath_50, month == "01")
+xkabledplyhead(NYweath_50_Jan)
+NYweath_50_Jan_TMAX <- subset(NYweath_50_Jan, select = c(year, TMAX)) 
+NYweath_50_Jan_TMAX$Pop <- Pop
+
+## predict the future! When will NYC hit the 2.5 degree C limit?
+
+```
+
+
+## Local weather and local environmental and climate factors  
+
+Tejas will look at air local air quality data and how it relates to precipitation trends and local human activities.  (Will include logistic regression.)  
+
+## Local weather and local human social and economic activity
+
+## Summary of Key Findings  
+
+## Conclusion  
+
+## Citations
+
+New York City Metro Area Population 1950-2022. www.macrotrends.net. Retrieved 2022-12-03.
