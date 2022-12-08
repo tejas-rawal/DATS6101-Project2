@@ -83,7 +83,7 @@ In this project, we are digging into the relationship between human activity and
 
 1. How do changes in NYC weather patterns correlate to changes in population and economic activity over the same time frame?  
 
-2. How do changes in NYC weather patterns correlate to changes in other urban climate factors such as air quality?  
+2. Are there statistically measurable changes in NYC air quality over time, and are they correlated to changes in daily maximum temperature observed in previous analysis? 
 
 3. How do changes in weather patterns correlate to other local human activity, such as  crime, reported COVID cases, and stock market performance?  
 
