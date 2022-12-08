@@ -158,9 +158,10 @@ colnames(NYweath_crime)[12] <- c("NUM_ARREST")
 #NYweath_crime_plot <- plot(sqrt(NYweath_crime$PRCP), NYweath_crime$NUM_ARREST)
 #boxplot((NYweath_crime$TOT_PRCP))
 
-NY_weathcrime_ggplot <- ggplot(NYweath_crime, aes(x = TMAX, y =NUM_ARREST)) + 
-  geom_point(aes(colour = PRCP_factor)) +
-  labs(x = "Temperature", y = "Number of Daily Arrests", 
+NY_weathcrime_ggplot <- ggplot(NYweath_crime,
+                               aes(x = TMAX, y =NUM_ARREST)) + 
+  geom_point(aes(colour = PRCP_factor), alpha = 0.5) +
+  labs(x = "Temperature (ºF)", y = "Number of Daily Arrests", 
        title = "Weather Patterns for NYC Crime")
 NY_weathcrime_ggplot
 
@@ -171,14 +172,14 @@ Initially made a boxplot of precipitation to observe the distribution.. It is ex
 
 ```{r}
 
-crimeWeath_lm <- lm(NUM_ARREST ~ TMAX + PRCP_factor,  
+crimeWeath_lm <- lm(NUM_ARREST ~ TMAX + PRCP_factor + year,  
                     data = NYweath_crime)
-crimeWeathMonth_lm <- lm(NUM_ARREST ~ (TMAX + PRCP_factor * month), 
+crimeWeathMonth_lm <- lm(NUM_ARREST ~ (TMAX + PRCP_factor + year + month), 
                     data = NYweath_crime)
 #crimeWeathTMIN_lm <- lm(NUM_ARREST ~ (TMIN + PRCP_factor), 
 #                    data = NYweath_crime)
 
-summary(crimeWeath_lm)
+summary(crimeWeathMonth_lm)
 
 ```
 
@@ -203,8 +204,7 @@ NYstock2 <- NYstock
 NYstock2 <- NYstock2 %>% 
   complete(Date = seq.Date(min(Date), max(Date), by="day"))
 
-options(scientific=T, digits = 10) 
-
+options(scientific=T, digits = 10)
 
 # This is all just test code for figuring out how to clean the data. 
 # Not part of final script.
@@ -232,7 +232,7 @@ NYstock2$year <- format(NYstock2$Date, format="%Y")
 
 head(NYstock2)
 summary(NYstock2)
-
+options(scientific=T, digits = 3) 
 
 ```
 
@@ -280,7 +280,8 @@ The distribution of sqrt Volume is considerably more normal. Will now look at co
 
 ```{r}
 
-pairs.panels(stockWeather_rmNA[c(5,10,11,13,14)], 
+pairs.panels(stockWeather_rmNA[c("TMAX", "TOT_PRCP","PRCP_factor",
+                                 "Volume","Volume_norm")], 
              method = "pearson", # correlation method
              hist.col = "#00AFBB",
              density = FALSE,  # show density plots
@@ -305,7 +306,7 @@ NY_weathstock_scatter
 
 NY_90s_weathstock_scatter <- ggplot(stockWeather_90s, aes(x = TMAX, y =Volume_norm)) + 
   geom_point(aes(colour = PRCP_factor)) +
-  labs(x = "Temperature", y = "Total Daily DOW Trade Volume", 
+  labs(x = "Temperature (ºF)", y = "Normalized Daily DOW Trade Volume (M)", 
        title = "Weather Patterns for DOW Trade Volume in the 1990s")
 NY_90s_weathstock_scatter
 
@@ -317,10 +318,24 @@ NY_90s_weathstock_scatter
 ```{r}
 
 
-stock_LM <- lm(Volume_norm ~ TMAX + TOT_PRCP, stockWeather_rmNA)
+stock_LM <- lm(Volume_norm ~ TMAX + PRCP_factor + year + month,
+               stockWeather_rmNA)
 summary(stock_LM)
 
+
+stock_LM_90s <- lm(Volume_norm ~ TMAX + PRCP_factor + year + month,
+                   stockWeather_90s)
+summary(stock_LM_90s)
+
+
+
 ```
+The Linear Model that incorporates all the Stock data from 1988-present had a statistically significant TMAX, year, and some of the months.
+
+The stock data subset to the 90s generated a similar model. 
+
+Find the confidence intervals of the coefficients.
+
 
 
 ### COVID Data
@@ -328,7 +343,7 @@ summary(stock_LM)
 Looking at the effect of precipitation and temperature on the number of positive COVID cases. Using the "CASE_COUNT" parameter for the NYC Covid dataset. CASE_COUNT represents the count of patients tested who were confirmed to be COVID-19 cases on date_of_interest
 
 ``` {r}
-
+options(scientific=T, digits = 3) 
 NYcovid <- tibble(read.csv("./data/COVID-19_Daily_Counts_of_Cases__Hospitalizations__and_Deaths.csv"))
 
 NYcovid <- select(NYcovid, 1:3)
@@ -383,9 +398,11 @@ NYcovid_finaldates <- subset(NYcovid_final, DATE <= "2022-09-26")
 tail(covWeather)
 NYweath_prcpCov <- cbind(covWeather, NYcovid_finaldates$CASE_COUNT,
                          NYcovid_finaldates$sqrt_count)
-colnames(NYweath_prcpCov)[11:12] <- c("CASE_COUNT", "sqrt_count")
+colnames(NYweath_prcpCov)[12:13] <- c("CASE_COUNT", "sqrt_count")
 
 covCount_prcp_plot <- plot(NYweath_prcpCov$sqrt_count, sqrt(NYweath_prcpCov$PRCP))
+
+NYweath_cov_final <- NYweath_prcpCov[,c(1:5, 8, 10:13)]
 
 ```
 
@@ -396,8 +413,8 @@ T-test comparing Covid positive counts on days with precipitation vs days withou
 
 ```{r}
 
-cov_prcp1 <- subset(NYweath_prcpCov, PRCP_factor == 1)
-cov_prcp0 <- subset(NYweath_prcpCov, PRCP_factor == 0)
+cov_prcp1 <- subset(NYweath_cov_final, PRCP_factor == 1)
+cov_prcp0 <- subset(NYweath_cov_final, PRCP_factor == 0)
 
 
 
@@ -405,13 +422,14 @@ cov_count_ttest <- t.test(cov_prcp0$sqrt_count, cov_prcp1$sqrt_count)
 cov_count_ttest
 
 cov_count_bplot <- ggplot()+
-  geom_boxplot(data = NYweath_prcpCov, aes(y = sqrt_count, x = PRCP_factor)) +
+  geom_boxplot(data = NYweath_cov_final,
+               aes(y = sqrt_count, x = PRCP_factor)) +
   labs(title = "COVID Positive Counts")
 
 cov_count_bplot
 
-
-cov_2021 <- subset(NYweath_prcpCov, year >= 2021)
+## Repeating this EDA looking only at Covid cases from 2021+. 
+cov_2021 <- subset(NYweath_cov_final, year >= 2021)
 
 cov_2021count_bplot <- ggplot()+
   geom_boxplot(data = cov_2021, aes(y = sqrt_count, x = PRCP_factor)) +
@@ -429,24 +447,75 @@ cov_2021count_ttest
 No significant difference in the mean Covid case counts on days with precipitation or without. However, there was a greater difference in the means when only incorporating Covid from 2021+. 
 
 
+```{r}
+
+covWeath_final_scatter <- ggplot(NYweath_cov_final, 
+                                 aes(x = TMAX, 
+                                     y =sqrt_count,
+                                     )) + 
+  geom_point(aes(colour = month, shape = PRCP_factor)) +
+  labs(x = "Temperature", 
+       y = "Square Root of Total Daily DOW Trade Volume", 
+       title = "Weather Patterns for Covid Case Counts")
+covWeath_final_scatter
+
+```
+
 Will now build a linear model that incorporates temperature, precipitation, and Month to predict Covid counts. 
 
 ```{r}
 library(psych)
-NYweath_cov_final <- NYweath_prcpCov[,c(1:5, 8, 10:12)]
 
-pairs.panels(NYweath_cov_final[4:9], 
+
+pairs.panels(NYweath_cov_final[4:10], 
              method = "pearson", # correlation method
              hist.col = "#00AFBB",
              density = FALSE,  # show density plots
              ellipses = FALSE # show correlation ellipses
              )
 
-cov_weathLM <- lm(sqrt_count ~ (TMAX + PRCP_factor) * month, data = NYweath_cov_final)
+
+cov_weathLM <- lm(sqrt_count ~ TMAX + PRCP_factor + year,
+                  data = NYweath_cov_final)
 summary(cov_weathLM)
+
+cov_weathLM_month <- lm(sqrt_count ~ TMAX + PRCP_factor + year + month,
+                  data = NYweath_cov_final)
+summary(cov_weathLM_month)
+
+
+
+cov2021_weathLM <- lm(CASE_COUNT ~ TMAX + PRCP_factor + year + month,
+                  data = cov_2021)
+summary(cov2021_weathLM)
 
 ```
 
+The linear model that only incorporates TMAX, PRCP_factor, and year has statistically significant coefficients for TMAX and year. This indicates the model predicts that the sqrt of covid counts decreases by 0.3 for degree F increase in TMAX.
+
+However, when we account for month, we lose the significance in the TMAX variable. This indicates that the covid cases are more effected by the seasonal changes rather than Temperature.
+
+
+Let's try to graph this!
+
+```{r}
+
+covLM_plot <- covWeath_final_scatter + 
+  geom_smooth(method = lm, se = FALSE, fullrange = TRUE,
+              aes(colour = PRCP_factor))
+covLM_plot
+  
+#ggplt
+  
+# Plotting multiple Regression Lines
+ggplt+geom_smooth(method=lm,se=FALSE,fullrange=TRUE,
+                  aes(color=Tree))
+
+covLM_plot
+
+
+
+```
 
 ## Summary of Key Findings  
 
