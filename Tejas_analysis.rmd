@@ -233,6 +233,7 @@ We have about 7,000 observations between the years 2000 and 2022. A few plots to
 mean_pm25 <- mean(DailyAQ_00_22$PM2.5)
 mean_aqi <- mean(DailyAQ_00_22$AQI)
 
+# TODO: combine plots into one frame
 ggplot(DailyAQ_00_22) +
   geom_histogram(aes(x=PM2.5), na.rm=TRUE, alpha=0.5, color="black", fill='#BD2AE2', bins=100, binwidth=2) +
   geom_vline(xintercept=mean_pm25, color="black", size=1, linetype=5, show.legend=FALSE) +
@@ -247,30 +248,42 @@ ggplot(DailyAQ_00_22) +
 
 
 # yearly average and year-over year growth of daily AQI and PM2.5
-# TODO: combine plots into one frame
+# TODO: same figure, separate plots
 ggplot(DailyAQ_00_22_Yearly_Growth, aes(group=1)) +
   geom_line(aes(x = year, y = pm2.5_avg), stat="identity", color="#BD2AE2", size=1) +
-  geom_line(aes(x = year, y = pm2.5_diffRate), na.rm = T, stat = "identity", color="#290DDA", size=1) +
-  labs(title="Yearly average amount of PM2.5 particulates in atmosphere and growth rate", x="Year", y="ug/m3 LC") +
+  geom_line(aes(x = year, y = aqi_avg), stat="identity", color="#2DD164", size=1) +
+  geom_point(aes(x = year, y = aqi_avg), na.rm = TRUE, fill="#457108", shape = 21) +
+  labs(title="Average PM2.5 particulate amount and AQI by year in NYC", x="Year", y="ug/m3 LC") +
   scale_y_continuous(sec.axis = sec_axis(~., name="Year-over-year Diff (%)")) +
   theme(
     axis.title.y = element_text(color = "#BD2AE2", size = 13),
     axis.title.y.right = element_text(color = "#290DDA", size = 13)
   )
 
+# TODO: group these in same figure, separate plots
 ggplot(DailyAQ_00_22_Yearly_Growth, aes(group=1)) +
-  geom_line(aes(x = year, y = aqi_avg), stat="identity", color="#2DD164", size=1) +
-  geom_line(aes(x = year, y = aqi_diffRate), na.rm = T, stat="identity", color="#457108", size=1) +
-  labs(title="Yearly average amount of PM2.5 particulates in atmosphere and growth rate", x="Year", y="ug/m3 LC") +
+  geom_line(aes(x = year, y = pm2.5_diffRate), na.rm = T, stat = "identity", color="#290DDA", size=1) +
+  geom_line(aes(x = year, y = aqi_diffRate), na.rm = T, stat="identity", color="#043008", size=1) +
+  geom_point(aes(x = year, y = aqi_diffRate), na.rm = TRUE, fill="#E6E930", shape = 23) +
+  geom_point(aes(x = year, y = aqi_diffRate), na.rm = TRUE, fill="#E6E930", shape = 23) +
+  labs(title="PM2.5 particulate and AQI growth rate by year in NYC", x="Year", y="ug/m3 LC") +
+  theme(
+    axis.title.y = element_text(color = "#2DD164", size = 13),
+    axis.title.y.right = element_text(color = "#E6E930", size = 13)
+  )
+
+
+ggplot(DailyAQ_00_22_Yearly_Growth, aes(group=1)) +
+  labs(title="AQI and growth rate and growht/decay rate by year in NYC", x="Year", y="ug/m3 LC") +
   scale_y_continuous(sec.axis = sec_axis(~., name="Year-over-year Diff (%)")) +
   theme(
     axis.title.y = element_text(color = "#2DD164", size = 13),
-    axis.title.y.right = element_text(color = "#457108", size = 13)
+    axis.title.y.right = element_text(color = "#E6E930", size = 13)
   )
 
 ```
 
-Next, we will combine our new dataset with the NYC weather data based on the date. Since there are a few missing dates in the air quality data, we will simply drop those rows without a air quality measurement.  
+Next, we will combine our new dataset with the NYC weather data based on the date. The days without a matching air quality measurement will be dropped after merge.
  
 ```{r combine and clean data}
 # merge data frame by date
@@ -294,7 +307,7 @@ Run correlation analysis on continuous numerical variables:
 
 ```{r data prep}
 # subset to numerical variables
-DailyAQ_numerics <- DailyAQ_merged[ , c('PM2.5', 'AQI', 'TMAX', 'TMIN', 'PRCP', 'SNOW')]
+DailyAQ_numerics <- DailyAQ_merged[ , c('PM2.5', 'AQI', 'TMAX', 'TMIN', 'PRCP', 'SNOW', 'year')]
 # combine PRCP and SNOW into single value
 #DailyAQ_numerics$PRCP <- DailyAQ_numerics$PRCP + DailyAQ_numerics$SNOW
 #DailyAQ_numerics <- subset(DailyAQ_numerics, select = -c(SNOW))
@@ -312,30 +325,26 @@ pairs.panels(DailyAQ_numerics,
   density = TRUE,  # show density plots
   ellipses = TRUE, # show correlation ellipses
   smoother = TRUE,
-  lm = TRUE
+  lm = TRUE,
+  main = "Pairs Plot Of Weather and Air Quality Numerical Variables"
 )
 ```
 Another way to look at correlation using the `corrplot` function:
-```{r corrplot}
+```{r corrplot, fig.align = "center", fig.}
 DailyAQ_cor <- cor(DailyAQ_numerics)
-corrplot.mixed(DailyAQ_cor)
+corrplot(DailyAQ_cor, method="number", title="Correlation Plot Of Weather and Air Quality Numerical Variables", mar = c(2, 2, 2, 2))
 ```
 
-From the pearson correlation plot above, we can see a significantly large, positive correlation between PM2.5 concentrations and the daily air quality index. Unfortunately, The correlations among our weather and air quality variables is relatively weak. We will still attempt a linear model between the variables below.   
-
-Build linear regression model
-    1. Describe significance and functions  
-    2. calculate VIF factor  
-    3. Evaluate fit    
+From the pearson correlation plot above, we can see a significantly large, positive correlation between PM2.5 concentrations and the daily AQI values. This is expected as PM2.5 is significantly weighed in calculations of AQI. Unfortunately, the correlation significance among our weather and air quality variables is relatively weak. However, we will still attempt a linear model between them below.   
 
 #### Linear models
 
-Let's start by creating a linear model to describe the relationship between AQI and our weather variables.
+Let's start by creating a linear model to describe the relationship between AQI and the variable we analyzed in our last project - TMAX - combined with the year.
 
 ```{r linear model}
 aqi_fit <- lm(AQI ~ TMAX + TMIN + PRCP + SNOW, data = DailyAQ_numerics)
 summary(aqi_fit)
-xkabledply(aqi_fit, title = paste("Model :", format( formula(aqi_fit) )))
+xkabledply(aqi_fit, title = paste("First Linear Model: ", format( formula(aqi_fit) )))
 ```
 The coefficients for each regressor is significant. TMIN and PRCP have a negative effect on daily AQI, while TMAX and SNOW have a positive effect on daily AQI. Although the p-value of the F-statistic is significant, the model regressors only explain a measly 0.9% of the variability in daily AQI measurements.  
 
@@ -343,18 +352,28 @@ Check for multicollinearity
 
 ```{r model 1 VIF}
 # model VIF scores
-xkablevif(aqi_fit)
+xkablevif(aqi_fit, title = "VIF Of Model Covariates")
 ```
-With a variance inflation factor of 12.4, we cannot accept TMAX and TMIN as regressors in our model.
+
+With a variance inflation factor of 12.4, we cannot accept TMAX and TMIN as regressors in our model.  
+
+Reversed fit
+```{r reversed model}
+api_fit_rev <- lm(TMAX ~ PM2.5, data = DailyAQ_numerics)
+summary(api_fit_rev)
+xkabledply(api_fit_rev, title = paste("Model :", format( formula(api_fit_rev) )))
+```
+
 
 ##### Adding `month` as a categorical regressor
-    1. Repeat steps 1-3 from above  
-    2. If significant, compare with first model via ANOVA (if that is also significant).  
+
+
+Let's build a model adding `month` as a categorical regressor and see how it affects the fit. Since we deemed the multicollinearity between TMAX and TMIN to be too high, TMIN is dropped from the model equation. We also go ahead and drop the PRCP and 
 
 ```{r second linear model}
 aqi_fit2 <- lm(AQI ~ TMAX + month, data = DailyAQ_merged)
 summary(aqi_fit2)
-xkabledply(aqi_fit2, title = paste("Model :", format( formula(aqi_fit2) )))
+xkabledply(aqi_fit2, title = paste("Second Linear Model: ", format( formula(aqi_fit2) )))
 ```
 
 Check for multicollinearity
@@ -379,7 +398,40 @@ Try Ridge on model with best fit?
 Evaluate relationships via scatter plots
   - scale and center data  
   - scatter plots of AQI,PM25,TMAX,TMIN,PRCP colored by month  
-  - check composition of labels (months)  
+  - check composition of labels (months) 
+  
+Seasonality of TMAX and PM2.5/AQI?
+```{r seasonality plots}
+# TODO: combine into 1 figure
+# TODO: remove TMIN
+# monthly average bar charts
+NYweath_Monthly_Avg <- NYweath_00 %>%
+  group_by(month) %>%
+  summarize("Avg Max Temp." = mean(TMAX, na.rm=T),
+            "Avg Min Temp." = mean(TMIN, na.rm=T))
+NYweath_Monthly_Avg %>%
+  dplyr::select(month, "Avg Max Temp.", "Avg Min Temp.") %>%
+  gather(key="Value", value="Temp", "Avg Max Temp.", "Avg Min Temp.") %>%
+  ggplot(aes(x=month, y=Temp, fill=Value)) +
+  geom_col(na.rm=TRUE, alpha=0.5, color="black", position="dodge") +
+  labs(title="Average Daily Max Temperature By Month", x="Month", y="Temperature (°F)") +
+  scale_fill_manual(values=c("red", "blue"))
+
+_Monthly_Avg <-  %>%
+  group_by(month) %>%
+  summarize("Avg AQI" = mean(TMAX, na.rm=T),
+NYweath_Monthly_Avg %>%
+  dplyr::select(month, "Avg Max Temp.", "Avg Min Temp.") %>%
+  gather(key="Value", value="Temp", "Avg Max Temp.", "Avg Min Temp.") %>%
+  ggplot(aes(x=month, y=Temp, fill=Value)) +
+  geom_col(na.rm=TRUE, alpha=0.5, color="black", position="dodge") +
+  labs(title="Average Daily Max Temperature By Month", x="Month", y="Temperature (°F)") +
+  scale_fill_manual(values=c("red", "blue"))
+
+# scatters
+#ggplot(DailyAQ_merged) +
+ #     geom_point(aes(x=DATE, y=PM2.5, color=month))
+```
   
 ```{r scatter plots}
 daq_length = length(DailyAQ_merged)
