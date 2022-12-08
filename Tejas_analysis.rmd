@@ -293,12 +293,6 @@ xkablesummary(DailyAQ_merged)
 
 ### Linear Model with daily air quality and weather variables
 
-Run correlation analysis on continuous numerical variables:
-    - TMAX, TMIN, PRCP, SNOW? (combine with PRCP?)  
-    - AQI, PM25  
-    - correlation plot and scatter plots of significant relationships.  
-    - is local air quality correlated to local weather patterns?  
-
 ```{r data prep}
 # subset to numerical variables
 DailyAQ_numerics <- DailyAQ_merged[ , c('PM2.5', 'AQI', 'TMAX', 'TMIN', 'PRCP', 'SNOW', 'year')]
@@ -320,7 +314,8 @@ pairs.panels(DailyAQ_numerics,
   ellipses = TRUE, # show correlation ellipses
   smoother = TRUE,
   lm = TRUE,
-  main = "Pairs Plot Of Weather and Air Quality Numerical Variables"
+  main = "Pairs Plot Of Weather and Air Quality Numerical Variables",
+  cex.labels=0.75
 )
 ```
 Another way to look at correlation using the `corrplot` function:
@@ -337,7 +332,7 @@ From the pearson correlation plot above, we can see a significantly large, posit
 ggplot(DailyAQ_00_22_Yearly_Growth) +
   geom_line(aes(x = year, y = aqi_avg), stat="identity", color="#2DD164", size=1) +
   geom_point(aes(x = year, y = aqi_avg), na.rm = TRUE, fill="#457108", shape = 21) +
-  labs(title="Average AQI by year in NYC", x="Year", y="Year-over-year Diff (%)")
+  labs(title="Average AQI by year in NYC", x="Year", y="AQI value")
 
 ggplot(DailyAQ_00_22_Yearly_Growth) +
   geom_line(aes(x = year, y = pm2.5_avg), stat="identity", color="#BD2AE2", size=1) +
@@ -360,13 +355,13 @@ The coefficient for the date regressor is significant, and has a negative effect
 ```{r lm plot}
 ggplot(DailyAQ_00_22, aes(x = DATE, y = AQI)) + 
   geom_point(alpha = 0.5, color = "#47ABE9") +
-  labs(x = "Year", y = "AQI Value", title = "NYC Daily AQI Values From 2000-2022 And Trend Line") +
+  labs(x = "Year", y = "AQI Value", title = "Daily AQI Values From 2000-2022 And Trend Line") +
   geom_smooth(method = 'lm', formula = 'y ~ x', color = "black", fill="black", se = TRUE)
 ```
 
 
 ##### Adding `month` as a categorical regressor
-In our first analysis, we analyzed linear trends of TMAX over time and determined a slight positive correlation observed over the years 1900-2022. Based on that fit, we hypothesized that seasonality trends had an impact on model performance which would be better explained by 
+In our first analysis, we analyzed linear trends of TMAX over time and determined a slight positive correlation observed over the years 1900-2022. Based on that fit, we hypothesized that seasonality trends had an impact on model performance.
 
 We believe seasonality also effects daily AQI measurements. 
 
@@ -421,7 +416,7 @@ summary(aqi_fit2)
 xkabledply(aqi_fit2, title = paste("Second Linear Model: ", format( formula(aqi_fit2) )))
 ```
 
-The regression coefficients for TMAX significant and positively correlated, with each degree increase resulting in AQI increasing by a factor of 0.68. All months, when compared to January, have a negative impact on AQI, with September having the largest (negative) slope. The p-value of the model's F-statistic is also significant, allowing us to reject the null hypothesis and conclude that there’s a significant relationship between our chosen predictors and the daily AQI value. However, the $R^2$ for our model is only `.149`, which indicates that only 14.7% of the variation in daily AQI can be explained by TMAX and month.  
+The regression coefficient for TMAX is significant and positively correlated, with each degree increase resulting in AQI increasing by a factor of 0.68. All months, when compared to January, have a negative impact on AQI, with September having the largest (negative) slope. The p-value of the model's F-statistic is also significant, allowing us to reject the null hypothesis and conclude that there’s a significant relationship between our chosen predictors and the daily AQI value. However, the $R^2$ for our model is only `.149`, which indicates that only 14.7% of the variation in daily AQI can be explained by TMAX and month.  
 
 Seasonality can cause a poor linear model. Properly testing it would require developing a seasonality time-series model to properly fit the data.
 
