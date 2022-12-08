@@ -525,12 +525,12 @@ Let's try to graph this! That did not work!
 Let's start by ingesting the Air Quality to add into this prediction in place of COVID.
 
 ```{r load csvs}
-DailyAQ_00_22 <- data.frame(read.csv("data/daily-AQ-NY-00-20.csv"))
-DailyAQ_00_22 <- DailyAQ_00_22[c('Date', 'Daily.Mean.PM2.5.Concentration', 'DAILY_AQI_VALUE')]
-colnames(DailyAQ_00_22) <- c('DATE', 'PM2.5', 'AQI')
-str(DailyAQ_00_22)
-xkablesummary(DailyAQ_00_22)
-xkabledplyhead(DailyAQ_00_22)
+#DailyAQ_00_22 <- data.frame(read.csv("data/daily-AQ-NY-00-20.csv"))
+#DailyAQ_00_22 <- DailyAQ_00_22[c('Date', 'Daily.Mean.PM2.5.Concentration', #'DAILY_AQI_VALUE')]
+#colnames(DailyAQ_00_22) <- c('DATE', 'PM2.5', 'AQI')
+#str(DailyAQ_00_22)
+#xkablesummary(DailyAQ_00_22)
+#xkabledplyhead(DailyAQ_00_22)
 ```
 
 Now let's build a master dataframe that incorporates Date, Year, Month, TMAX, PRCP, PRCP_Factor, 
@@ -541,17 +541,17 @@ PM2.5, and AQI.
 ```{r}
 
 # FORMAT AQ Data and subset dates
-AQ_forLogit <- DailyAQ_00_22
-AQ_forLogit$DATE <- as.Date(AQ_forLogit$DATE, format = "%m/%d/%y")
-AQ_forLogit$day <- format(AQ_forLogit$DATE, format="%d")
-AQ_forLogit$month <- format(AQ_forLogit$DATE, format="%m")
-AQ_forLogit$year <- format(AQ_forLogit$DATE, format="%Y")
-AQ_forLogit$year <- as.numeric(AQ_forLogit$year)
+#AQ_forLogit <- DailyAQ_00_22
+#AQ_forLogit$DATE <- as.Date(AQ_forLogit$DATE, format = "%m/%d/%y")
+#AQ_forLogit$day <- format(AQ_forLogit$DATE, format="%d")
+#AQ_forLogit$month <- format(AQ_forLogit$DATE, format="%m")
+#AQ_forLogit$year <- format(AQ_forLogit$DATE, format="%Y")
+#AQ_forLogit$year <- as.numeric(AQ_forLogit$year)
 
-AQ_forLogit2 <- AQ_forLogit %>% 
-  complete(DATE = seq.Date(min(DATE), max(DATE), by="day"))
+#AQ_forLogit2 <- AQ_forLogit %>% 
+ # complete(DATE = seq.Date(min(DATE), max(DATE), by="day"))
 
-AQ_masterDates <- subset(AQ_forLogit2, year >= 2006 & year < 2022)
+#AQ_masterDates <- subset(AQ_forLogit2, year >= 2006 & year < 2022)
 
 
 stock_masterDates <- subset(NYstock_final,Date >= "2006-01-01" &
@@ -618,6 +618,8 @@ prcp_pr2 <- pR2(prcp_logit)
 prcp_pr2
 
 ```
+
+This is NOT a good logistic regression!!!
 
 ## Summary of Key Findings  
 
