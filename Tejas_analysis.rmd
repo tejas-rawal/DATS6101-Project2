@@ -70,11 +70,13 @@ NYweath_00 <- subset(NYweath_sub, year > 1899)
 xkabledplyhead(NYweath_00)
 ```
 
+# Are there statistically measurable changes in NYC air quality over time, and are they correlated to changes in daily maximum temperature observed in previous analysis?
+
 ## Analysis Questions
 
 1. Logistic regression to predict rainy day based on TMAX, TMIN, MONTH, DAY?  
-2. Linear correlations between Air Quality and Weather variables  
-3. Can we predict the month based on weather variables (kNN)?  
+2. Linear correlations between Air Quality, time, and maximum temperature
+3. Can we predict the month based on daily air quality and maximum temperature (kNN)?  
 
 ### Logitic Model Preparation
 
