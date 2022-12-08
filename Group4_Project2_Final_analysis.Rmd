@@ -65,6 +65,43 @@ NYweath_sub <- subset(NYweath, select = c(DATE, day, month, year, TMAX, TMIN, TA
 #creating a subset for 1900 on
 NYweath_00 <- subset(NYweath_sub, year > 1899)
 xkabledplyhead(NYweath_00)
+
+
+#new data loading from Emily, New York State population from 1900 on 
+NYSPop_1900 <- data.frame(read.csv("data/NYSPop_1900-2021.csv"))
+NYSPop_1900$Population <- as.numeric(NYSPop_1900$Population)
+NYSPop_1900$Year <- as.numeric(NYSPop_1900$Year)
+
+#creating a subset for 1900-2021
+NYweath_00a <- subset(NYweath_sub, year > 1899)
+NYweath_00a <- subset(NYweath_00a, year < 2022)
+
+for(i in 1:length(NYweath_00a$year)){
+  (NYweath_00a$Pop[i]= NYSPop_1900$Population[(which(NYSPop_1900$Year == NYweath_00a$year[i]))]
+  )}
+
+#New data loading from Emily, shootings
+NYshoot <- data.frame(read.csv("data/Shooting_Counts_ERG.csv"))
+
+#converting to R date format and adding columns for day, month, and year
+NYshoot$DATE <- as.Date(NYshoot$Date, format = "%m/%d/%Y")
+
+#cleaning shooting data, merging with NYweath_00a
+
+NYweathshoot_06 <- subset (NYweath_00a, year > 2005)
+NYweathshoot_06 <- subset (NYweathshoot_06, year < 2022)
+#str(NYweathshoot_06)
+#str(NYshoot)
+
+NYweathshoot_06 <- full_join(NYshoot, NYweathshoot_06, by = "DATE")
+NYweathshoot_06$day <- format(NYweathshoot_06$DATE, format="%d")
+NYweathshoot_06$month <- format(NYweathshoot_06$DATE, format="%m")
+NYweathshoot_06$year <- format(NYweathshoot_06$DATE, format="%Y")
+NYweathshoot_06$day <- as.numeric(NYweathshoot_06$day)
+NYweathshoot_06$month <- as.factor(NYweathshoot_06$month)
+NYweathshoot_06$year <- as.numeric(NYweathshoot_06$year, format="%Y")
+NYweathshoot_06 <- NYweathshoot_06 %>% mutate(Shootings = ifelse(is.na(Shootings), 0, Shootings))
+summary(NYweathshoot_06)
 ```
 
 CW ADD: Adding a 'TOT_PRCP' row that sums up the total precipitation between SNOW and PRCP. This row will be used in Question 3.
@@ -90,7 +127,122 @@ In this project, we are digging into the relationship between human activity and
 
 # Local weather and global and local human environmental footprint
 
-Emily will re-do logistic regression looking at measures of local and global human activity as regressors rather than year. She will also look into variable transformations (i.e., linear models fit to polynomials of regressors) to see if the response is best fit as linear or polynomial.  
+Emily will re-do linear regression looking at measures of local and global human activity as regressors rather than year. She might also look into variable transformations (i.e., linear models fit to polynomials of regressors) to see if the response is best fit as linear or polynomial.  
+
+At the end of our exploratory data analysis, we developed a linear model of maximum daily temperature over time, with year as a linear regressor. This revealed to us that there is a statistically significant increase in average maximum temperatures over time. However, we do not suspect that time is the cause-- rather, it is something else that has changed over time that has caused the warming in New York. We wanted to explore correlations with other, more direct proxies for human activity. 
+
+Our original fit used year as a numerical regressor and month as a categorical regressor. The resulting fit has an r-squared value of 0.775 and a slope of 0.025 degrees Fahrenheit per year, with all fit parameters' p-values well below 0.05. The different intercepts for the each level of the categorical variable (the twelve months of the year) indicated that January is the coldest and July the hottest month in Central Park, with an average difference in maximum daily temperature of approximately 46 degrees Fahrenheit in any given year over this window.  
+
+
+```{r}
+maxTfit00_ym <- lm(formula = TMAX ~ year + month, data = NYweath_00a )
+res00_ym <- residuals(maxTfit00_ym)
+summary(maxTfit00_ym)  
+
+```
+
+The two extremes and their linear models are plotted in the following figure.  
+
+
+```{r}
+#plot of just July and January
+
+ggplot(NYweath_00a, aes(x = year, y = TMAX, color = month)) +
+    geom_point() +
+    scale_color_manual(values = c("01" = "purple4",
+                                   "07" = "red"), na.value = NA) +
+    geom_abline(aes(intercept = -11.05508, slope = 0.02539), col = "black", size = 1) + 
+    geom_abline(aes(intercept = 34.98295, slope = 0.02539), col = "black", size = 1) +
+  
+    labs(
+        x = "Year",
+        y = "Maximum Daily Temperature",
+        title = "Maximum Daily Temperature in Central Park") +
+    xlab(label = "Year") +
+    ylab(label = "Maximum daily temperature") +
+    ggtitle(label = "Maximum Daily Temperature in Central Park")
+```
+
+
+Do other weather variables correlate to TMAX?
+
+```{r}
+NYweath_cor <- subset(NYweath_00a, select = c(year, TMAX, PRCP, SNOW))
+str(NYweath_cor)
+weathcor <- cor(NYweath_cor, use = "pairwise.complete.obs")
+corrplot::corrplot(weathcor)
+cor
+
+```
+
+We have found a reasonable linear model for temperature over time, but can we look instead at the connection to human activities, rather than time? Can we use some aspect of human activity as a regressor and generate a reasonable model?
+
+
+We looked to the Census for U.S. population data, but that is only reported decennially, so we looked for other sources. We found historical data back to 1960 for New York state online https://www.macrotrends.net/cities/23083/new-york-city/population. Because this source is not known to us, we validated it against decennial census data.  
+
+
+A bunch of linear models...
+
+```{r}
+#LM1
+maxTfit00_m <- lm(formula = TMAX ~ month, data = NYweath_00a)
+summary(maxTfit00_m)  
+
+```
+
+```{r}
+#LM4
+maxTfit00_all <- lm(formula = TMAX ~ year + month + PRCP, data = NYweath_00a)
+summary(maxTfit00_all)  
+
+```
+
+```{r}
+#maxTfit00_all_intrxn <- lm(formula = TMAX ~ year + month*day + PRCP + SNOW, data = NYweath_00a)
+#summary(maxTfit00_all)  
+
+```
+
+```{r}
+#anova(maxTfit00_m, maxTfit00_ym)
+
+```
+
+```{r}
+#anova(maxTfit00_all, maxTfit00_all_intrxn)
+```
+
+
+```{r}
+#LM2
+maxTfit00_pop <- lm(formula = TMAX ~ Pop + month, data = NYweath_00a)
+summary(maxTfit00_pop)  
+
+```
+
+```{r}
+#maxTfit00_pop_all <- lm(formula = TMAX ~ Pop + month + PRCP, data = NYweath_00a)
+#summary(maxTfit00_pop)  
+
+```
+
+```{r}
+#plot of NYS Pop over time
+
+ggplot(NYweath_00a, aes(x = year, y = Pop)) +
+    geom_point() +
+#    geom_abline(aes(intercept = -11.05508, slope = 0.02539), col = "black", size = 1) + 
+    labs(
+        x = "Year",
+        y = "New York State Population",
+        title = "Annual Population of New York State") +
+    xlab(label = "Year") +
+    ylab(label = "New York State Population") +
+    ggtitle(label = "Annual Population in New York State")
+```
+  
+
+
 
 # Local weather and local environmental and climate factors  
 
@@ -448,6 +600,71 @@ ggplot(knn_different_k, aes(x = k, y = accuracy)) +
 It seems 13-nearest neighbors is a decent choice because that's the greatest improvement in predictive accuracy before the incremental improvement trails off. With an accuracy of `r knn_different_k[7, 2]`, our model predicting month based on `TMAX` and `AQI` is not a strong fit.
 
 # Local weather and local human social and economic activity
+
+```{r}
+# correlation between shooting & weather data from Emily
+NYweathshoot_06_cor <- subset(NYweathshoot_06, select = c(year, day, TMAX, PRCP, SNOW, Shootings, Murders))
+str(NYweathshoot_06_cor)
+shootcor <- cor(NYweathshoot_06_cor, use = "pairwise.complete.obs")
+corrplot::corrplot(shootcor)
+cor
+```
+
+```{r}
+#plot from Emily
+ggplot(NYweathshoot_06) +
+  geom_histogram(aes(x=Shootings), na.rm=TRUE, alpha=0.5, color="black", bins=100, binwidth=2, fill = "green") + 
+  labs(title="Distribution of daily NYC shootings (2006-2021)", x="Number of daily Shootings", y="Count")
+
+#Not quite normal-- necessarily right-skewed, but a lot of data points...
+
+```
+```{r average # shootings bar plot, results='asis'}
+
+#ERG
+shoot_Month <- NYweathshoot_06 %>%
+  group_by(month) %>%
+  summarize("Shootings" = mean(Shootings, na.rm=T),
+            "Shooting murders" = mean(Murders, na.rm=T))
+
+# side-by-side bar plot
+shoot_Month %>%
+  dplyr::select(month, "Shootings", "Shooting murders") %>%
+  gather(key="Value", value="Count", "Shootings", "Shooting murders") %>% 
+  ggplot(aes(x=month, y=Count, fill=Value)) +
+  geom_col(na.rm=TRUE, alpha=0.5, color="black", position="dodge") +
+  labs(title="Average NYC daily shootings (2006-2021) by month", x="Month", y="Number of shootings") +
+  scale_fill_manual(values=c("red", "blue"))
+
+```
+
+```{r}
+#making scatter plot of Shootings v TMAX-- ERG Add
+ggplot(NYweathshoot_06, aes(x = TMAX, y = Shootings, color = month)) +
+    geom_point() +
+  #  scale_color_gradient(low="red", high="blue") +   
+  #scale_color_manual(values = c("01" = "purple4",
+#                                   "07" = "red"), na.value = NA) +
+    #geom_abline(aes(intercept = -11.05508, slope = 0.02539), col = "black", size = 1) + 
+    labs(
+        x = "Year",
+        y = "Maximum Daily Temperature",
+        title = "Maximum Daily Temperature in Central Park") +
+    xlab(label = "TMAX (degrees Fahrenheit)") +
+    ylab(label = "# Shootings") +
+    ggtitle(label = "Number of NYC Shootings v. TMAX")
+```
+
+```{r}
+#modeling Shootings
+
+#shoot_lm <- lm(formula = Shootings ~ year + month + day + SNOW + PRCP + TMAX + TMIN, data = NYweathshoot_06) 
+NYweathshoot_06$month <- as.factor(NYweathshoot_06$month)
+#shoot_lm <- lm(formula = Shootings ~ year + month + SNOW + PRCP + TMAX, data = NYweathshoot_06) 
+shoot_lm <- lm(formula = Shootings ~ year + SNOW + PRCP + TMAX, data = NYweathshoot_06) 
+summary(shoot_lm) 
+
+```
 
 Chris will look at the local weather data and how it affects human behavior. Will look for correlations between precipitation, temperature, stock market, COVID tests, and crime
 
