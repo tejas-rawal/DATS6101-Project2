@@ -118,11 +118,19 @@ NYweath_final$TOT_PRCP <- NYweath_00$PRCP + NYweath_00$SNOW
 
 In this project, we are digging into the relationship between human activity and weather in New York city. Our three driving questions are:  
 
+- What we analyzed during Project 1  
+- Background of where we started from  
+- How we chose to continue
+
+## SMART Questions
+
 1. How do changes in NYC weather patterns correlate to changes in population and economic activity over the same time frame?  
 
 2. Are there statistically measurable changes in NYC air quality over time, and are they correlated to changes in daily maximum temperature observed in previous analysis? 
 
 3. How do changes in weather patterns correlate to other local human activity, such as  crime, reported COVID cases, and stock market performance?  
+  - Emily - shooting model  
+  - Chris - other crime models
 
 
 # Local weather and global and local human environmental footprint
@@ -1219,3 +1227,10 @@ Challenges with data – data were not ideal for our initial hypotheses– canno
 Cannot model seasonality with linear regressions. Potentially need to use seasonality-adjusted time-series models for better outcomes.  
 
 What data would enable us to answer the question if we had more time?
+
+## Conclusions
+- What were the limitations to your methods
+- Data availability issues. Not having all data we wanted to explore.
+- Brief model description
+
+## References (ADA Style)
