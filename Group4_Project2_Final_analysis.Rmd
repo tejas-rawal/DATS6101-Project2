@@ -42,8 +42,8 @@ library(psych)
 library(corrplot)
 library(lattice)
 library(FNN)
-library(gmodels)
 library(caret)
+library(pROC)
 
 #loading data 
 NYweath <- data.frame(read.csv("data/NYC_weather_1869_2022.csv"))

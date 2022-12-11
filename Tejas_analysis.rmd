@@ -41,7 +41,6 @@ library(corrplot)
 library(lattice)
 library(psych)
 library(FNN)
-library(gmodels)
 library(caret)
 library(pROC)
 
@@ -532,7 +531,7 @@ Build kNN model for k = 13
 kval <- 13
 
 # build model
-DailyAQ_pred <- knn(train = DailyAQ_training,
+DailyAQ_pred <- FNN::knn(train = DailyAQ_training,
                     test = DailyAQ_test,
                     cl = DailyAQ_trainLabels,
                     k = kval)
@@ -548,14 +547,7 @@ xkabledply(data.frame(DailyAQ_confusionMatrix$byClass), title=paste("k = ", kval
 
 Model ROC/AUC curve
 ```{r knn ROC/AUC}
-#probabilities <- predict(DailyAQ_pred, type="response")
-# knn model using caret
-DailyAQ_knn2 <- train(DailyAQ_training, DailyAQ_trainLabels, method="knn")
-DailyAQ_knn2
-# used model to gather predictions on test
-preds_knn <- predict(DailyAQ_knn2, newdata = DailyAQ_test, type = "prob")
-
 # multiclass ROC on test labels
-knnROC <- multiclass.roc(DailyAQ_testLabels, preds_knn)
+knnROC <- multiclass.roc(DailyAQ_testLabels, as.integer(DailyAQ_pred))
 knnROC
 ```
