@@ -4,6 +4,7 @@ author: "Team Awesomeness (Team 4): Chris, Tejas, Emily"
 date: "`r Sys.Date()`"
 output:
   html_document:
+    theme: paper
     code_folding: hide
     number_sections: false
     toc: yes
@@ -22,7 +23,7 @@ library(ezids)
 # some of common options (and the defaults) are: 
 # include=T, eval=T, echo=T, results='hide'/'asis'/'markup',..., collapse=F, warning=T, message=T, error=T, cache=T, fig.width=6, fig.height=4, fig.dim=c(6,4) #inches, fig.align='left'/'center','right', 
 # knitr::opts_chunk$set(warning = F, results = "markup", message = F)
-knitr::opts_chunk$set(warning = F, results = "hide", message = F)
+knitr::opts_chunk$set(warning = F, results = "hide", message = F, echo = F)
 options(scientific=T, digits = 3) 
 # options(scipen=9, digits = 3) 
 # ‘scipen’: integer. A penalty to be applied when deciding to print numeric values in fixed or exponential notation.  Positive values bias towards fixed and negative towards scientific notation: fixed notation will be preferred unless it is more than ‘scipen’ digits wider.
@@ -111,7 +112,7 @@ NYweath_final$TOT_PRCP <- NYweath_00$PRCP + NYweath_00$SNOW
 ```
 
 
-## Introduction  
+# Introduction  
 
 In this project, we are digging into the relationship between human activity and weather in New York city. Our three driving questions are:  
 
@@ -121,9 +122,9 @@ In this project, we are digging into the relationship between human activity and
 
 During our first project, we analyzed daily weather patterns from data collected at a weather station in Central Park, New York City. Through our analysis, we confirmed that there was a statistically significant rise in daily maximum temperatures over the last 122 years.  
 
-We performed an ANOVA test on daily maximum temperature values over different periods of time and found statistically significant results regarding variance in-between our samples. This led us to create linear models to predict the rate the change in daily maximum temperature over time.
+We performed an ANOVA test on daily maximum temperature values over different periods of time and found statistically significant results regarding variance in-between our samples. This led us to create linear models to predict the rate of change in daily maximum temperature over time. 
 
-## Our Research Questions
+# Research Questions
 
 For this project, we addressed the relationships between human activity, and weather by incorporating new datasets related to population, economic indicators, air quality, crime, and COVID-19.  
 
@@ -252,15 +253,13 @@ ggplot(NYweath_00a, aes(x = year, y = Pop)) +
     ylab(label = "New York State Population") +
     ggtitle(label = "Annual Population in New York State")
 ```
-  
 
 
+# Local weather and air quality
 
-## Relationships between Local weather and air quality
+The Air Quality Index (AQI) is used for daily reporting of local air quality. It tells us how clean or polluted the air is, and what associated health effects might be a concern for the public. The higher the AQI value, the the greater the level of air pollution and greater the health concern. Outdoor concentrations of pollutants such as Ozone, Carbon Monoxide, Nitrogen dioxide, Sulfur Dioxide, and PM2.5/PM10 concentrations are measured at stations across New York City and reported to the EPA. The daily AQI is calculated based on these concentration values and stored within the EPA's Air Quality System database. 
 
-The AQI is an index for reporting daily air quality. It tells how clean or polluted the air is, and what associated health effects might be a concern for the public. The higher the AQI value, the the greater the level of air pollution and greater the health concern. Outdoor concentrations of pollutants such as Ozone, Carbon Monoxide, Nitrogen dioxide, Sulfur Dioxide, and PM2.5/PM10 concentrations are measured at stations across New York City and reported to the EPA. The Daily Air Quality Index (AQI) is calculated based on these concentration values and stored within the EPA's Air Quality System database. 
-
-As city life changes, so does its air quality. Sources of emissions such as traffic and burning of fossil fuels for energy generation can cause air quality to deteriorate. Emissions can also contribute to global warming by releasing more greenhouse gasses into the atmosphere, thus increasing average temperatures. As more people migrate to urban areas, we will continue to see a deterioration in air quality unless measures are taken. The goal for integrating this data is to study the affects of weather patterns on air quality, and to statistically verify changes in air quality over time in New York City.  
+Changes in urban life correlate with changes in air quality within that urban area. Sources of emissions such as traffic and burning of fossil fuels for energy generation can cause air quality to deteriorate. Emissions can also contribute to global warming by releasing more greenhouse gasses into the atmosphere, thus increasing average temperatures. As more people migrate to urban areas, we will continue to see a deterioration in air quality unless reducing measures are taken. Our goal for integrating this data is to study the affects of weather patterns on air quality, and to statistically verify changes in air quality over time in New York City.  
 
 The dataset contains about 7,000 observations collected from January, 2000 to October, 2022.  
 
@@ -291,7 +290,7 @@ DailyAQ_00_22_Yearly_Growth <- DailyAQ_00_22_Yearly_Growth %>%
 
 ```
 
-We start by looking at the distribution of our variables of interest: AQI.
+We start by looking at the distribution of our variable of interest: AQI.
 
 ```{r daily aqi plots, results='asis'}
 # distribution plot of pmi2.5 and daily AQI
@@ -304,7 +303,10 @@ ggplot(DailyAQ_00_22) +
   labs(title="Distribution of Daily AQI Level", x="", y="Count")
 
 ```
-In the histogram depicting the distribution of AQI, we can gauge that the distribution is fairly normal. Although it is slight right skewed, the number of data points suggests we can treat it as normal for our modeling. The right-skewness is caused by days with unusually high AQI values.  
+
+From the histogram above, we can gauge that the distribution is slightly right-skewed. With the large number of observations in our dataset, we can assume normality for our modeling. The right-skewness is caused by days with unusually high AQI values.  
+
+The year-over-year growth rate was also calculated based on yearly average AQI and is depicted in the line plot below.  
 
 ```{r year-over-year rate, results='asis'}
 ggplot(DailyAQ_00_22_Yearly_Growth, aes(group=1)) +
@@ -317,7 +319,7 @@ ggplot(DailyAQ_00_22_Yearly_Growth, aes(group=1)) +
   )
 ```
 
-The year-over-year growth rate was also calculated based on yearly average AQI and is depicted in the 2nd line plot. We see an alternating pattern between years that increases in variance as we move towards 2022.  
+We can see an alternating patterns of increase and decrease in average AQI between each year from 2000 to 2009. After 2009, the pattern is broken but the variance continues.  
 
 In order to evaluate correlation between weather and air quality, we combined our dataset with the NYC weather data based on the date value in each. Dates without a matching air quality measurement are dropped. Subsequent models will be built using this merged dataframe.
  
@@ -331,9 +333,9 @@ str(DailyAQ_merged)
 xkablesummary(DailyAQ_merged)
 ```
 
-The first step to building linear models is assessing correlation between numerical variables in the data. Because the year variable in our dataset begins at 2000, it will unnecessarily scale our coefficients when used in linear modeling. We properly scaled the variable to start at 0 (and continue to 22 to represent 2022).  
+The first step to building linear models is assessing correlation between numerical variables in the data. Because the year variable in our dataset begins at 2000, it will unnecessarily scale our coefficients when used in linear modeling. Therefore, we scaled the variable to start at 0 (and continue to 22 to represent 2022).  
 
-The correlation is evaluated via a pairs plot, which depicts the correlation coefficient between numerical variables and scatterplots of their relationships. The pairs plot uses the Pearson correlation method.
+The correlation is evaluated via a pairs plot, which depicts the correlation coefficient between numerical variables, and includes scatterplots of their relationships. The pairs plot uses the Pearson correlation method.
 
 ```{r data prep}
 # subset to numerical variables
@@ -367,7 +369,7 @@ ggplot(DailyAQ_00_22_Yearly_Growth) +
   labs(title="Average AQI by year in NYC", x="Year", y="AQI value")
 ```
 
-The line plot confirms the correlation value we observed in the pairs plot. The average yearly AQI is indeed decreasing as year increases. To further test our observations, we will build a linear model using year as a regressor to estimate daily AQI.  
+The line plot confirms the correlation value we observed in the pairs plot. The average yearly AQI is indeed decreasing as year increases. Next, we build a linear model using year as a regressor to estimate daily AQI.  
 
 ```{r linear model}
 aqi_fit <- lm(AQI ~ year, data = DailyAQ_numerics)
@@ -375,7 +377,7 @@ summary(aqi_fit)
 xkabledply(aqi_fit, title = paste("First Linear Model: ", format( formula(aqi_fit) )))
 ```
 
-The results of our linear model reveal a significant value for both the intercept and year coefficient. The coefficient value for the year regressor, `r aqi_fit$coefficients[2]`, indicates that for every year increase, the predicted daily AQI decreases by a factor of 1.78. This supports the correlation coefficient we saw earlier between these two variables. The p-value of the F-statistic is also significant, but the $R^2$ value of the model is a measly 0.28. Based on this model, the year only explains 28% of the variability in daily AQI measurements. This is not a significantly high result. Looking at the scatterplot of the relationship can help explain the weak fit.
+The results of our linear model reveal a significant value for both the intercept and year coefficient. The coefficient value for the year regressor indicates that for every year increase, the predicted daily AQI decreases by a factor of 1.78. This supports the correlation coefficient we saw earlier between these two variables. The p-value of the F-statistic is also significant, but the $R^2$ value of the model is a measly 0.28. Based on this model, the year only explains 28% of the variability in daily AQI measurements. This is not a significantly high result. Looking at the scatterplot of the relationship can help explain the weak fit.
 
 ```{r lm plot}
 ggplot(DailyAQ_00_22, aes(x = year, y = AQI)) + 
@@ -385,8 +387,7 @@ ggplot(DailyAQ_00_22, aes(x = year, y = AQI)) +
 ```
 
 As we can see, there is a high degree of noise when observing daily AQI values at the yearly level. Although the plot displays a slightly downward trend in daily AQI, but model fit is distorted. This helps explain the results we received from our linear model.  
-
-Can we add more or different predictors to improve the fit? In our first analysis, we looked at linear trends of TMAX over time and determined a slight positive correlation observed over the years 1900-2022. We also utilized month as a categorical regressor to help explain the variance in daily maximum temperatures. Based on those results, we concluded that seasonality trends had a negative impact on model performance. Perhaps seasonality also also plays a part in daily AQI measurements?  
+Can we add more or different predictors to improve the fit? In our first project, we looked at linear trends of TMAX over time and determined a slight positive correlation observed over the years 1900-2022. We also utilized month as a categorical regressor to help explain the variance in daily maximum temperatures. Based on those results, we concluded that seasonality trends had a negative impact on model performance. Perhaps seasonality also also plays a part in daily AQI measurements.  
 
 ```{r average AQI and TMAX vs year}
 # NYC weather - Avg TMAX by month
@@ -421,9 +422,9 @@ ggplot(DailyAQ_monthly, aes(x = as.numeric(month), y = aqi_avg)) +
                      breaks = c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12))
 ```
 
-Plotting the average AQI by month, we can see seasonal trends as AQI values are generally high during winter and summer months but the low in the months between.  
+Plotting the average AQI by month, we observe seasonal trends. AQI values are generally high during winter and summer months, but realtively low for the the months in between.  
 
-Based on this, we can modify our last model and attempt to fit seasonality by adding `month` as a categorical regressor, along with our variable-of-interest from the last project - TMAX.
+Based on this, we modify our last model and attempt to fit seasonality by adding `month` as a categorical regressor, along with our variable-of-interest from the last project - TMAX.
 
 ```{r second linear model}
 aqi_fit2 <- lm(AQI ~ TMAX + month, data = DailyAQ_merged)
@@ -433,25 +434,23 @@ xkabledply(aqi_fit2, title = paste("Second Linear Model: ", format( formula(aqi_
 
 The regression coefficient for TMAX is significant and positively correlated, with each degree Fahrenheit increase resulting in AQI increasing by a factor of 0.68. The regression coefficients for all month categories are also significant. In fact, every month has a negative impact on AQI when compared to January. September exhibits the largest difference, with a predicted AQI almost 44 points lower than January!  
 
-The p-value of the model's F-statistic is also significant, allowing us to reject the null hypothesis and conclude that there’s a significant relationship between our chosen predictors and the daily AQI value. However, the $R^2$ for our model is only `.149`, which is weaker than our previous model. This indicates that only 14.7% of the variation in daily AQI can be explained by TMAX and month.  
+The p-value of the model's F-statistic is also significant, concluding a significant relationship between our chosen predictors and the daily AQI value. However, the $R^2$ for our model is only `.149`, which is weaker than our previous model. This indicates that only 14.7% of the variation in daily AQI can be explained by TMAX and month.  
 
 ```{r model 1 VIF}
 # model VIF scores
 xkablevif(aqi_fit2, title = "Model 2 VIF")
 ```
 
-The VIF scores for all regressors are in an acceptable range, however the fit is still poor.  
+The VIF scores for all regressors are in an acceptable range, however the fit is still poor. From our results, we can conclude that linear models are insufficient for representing data with seasonal trends.  
 
-From our results, we can conclude that linear models provide an inaccurate representation of the effects of seasonality within our data.  
-
-It seems that due to seasonality, and the nature of time-series data, we cannot properly model daily AQI using linear regression. Perhaps a classification technique can be utilized to properly address the seasonal trends. More precisely, we can build a kNN model to classify the month based on daily AQI and maximum temperature values.  
+It seems that due to seasonal nature of our time-series data, we cannot properly model daily AQI using linear regression. Perhaps a classification technique can be utilized to address the seasonal trends. More precisely, we can build a kNN model to classify the month based on daily AQI and maximum temperature values.  
   
-We start with plotting the relationship between our chosen predictors and add a layer to discern month within the scatter.
+We start with plotting the relationship between our chosen predictors and add a layer to discern month within the plot.
   
-```{r scatter plots, fig.width=4, fig.height=2}
+```{r scatter plots, results='asis'}
 ggplot(DailyAQ_merged) +
     geom_point(aes(x=AQI, y=TMAX, color=month), alpha = 0.7) +
-    labs(title = "Daily Maximum Temperature vs Daily Air Quality Index Value Distinguished By Month",
+    labs(title = "TMAX vs AQI Value Colored By Month",
          x = "Daily AQI Value",
          y = "Daily Maximum Temperature (F)") +
   scale_color_brewer(palette = "Paired")
@@ -459,7 +458,7 @@ ggplot(DailyAQ_merged) +
 
 We can make out minimal distinction of month from the scatterplot above, but the model will provide a more detailed analysis.  
 
-The kNN model requires us to center and scale our predictor values, as they are recorded in vastly different units of measurement. We also need to split our dataset into training and testing frames. We used a 4:1 split for to satisty this requirement.
+The first step involves scaling and centering our predictor values, as they are recorded in vastly different units of measurement. We also need to split our dataset into training and testing frames. We used a 4:1 split for to satisfy this requirement.
 
 ```{r normalize data}
 # center and scale our data
@@ -525,7 +524,7 @@ ggplot(knn_different_k, aes(x = k, y = accuracy)) +
        y = "Accuracy")
 ```
 
-To find the best k-value for our model, we evaluated the model over a range of k from 1 to 21. From the plot about, it seems 13-nearest neighbors is a decent choice since it provides the greatest improvement in predictive accuracy before the incremental improvement trails off.  
+To find the optimal k-value, we evaluated the model over a range of k from 1 to 21. Based on the plot above, it seems 13-nearest neighbors is a decent choice as it provides the greatest improvement in predictive accuracy before the incremental improvement trails off. We can build the kNN model using 13 as the k-value.
 
 ```{r kNN model}
 # set kval
@@ -546,14 +545,15 @@ xkabledply(as.matrix(DailyAQ_confusionMatrix), title = paste("ConfusionMatrix fo
 xkabledply(data.frame(DailyAQ_confusionMatrix$byClass), title=paste("k = ", kval))
 ```
 
-The overall accuracy of our model is a relatively weak value of `r DailyAQ_pred_accuracy`. This indicates that AQI and TMAX were not good predictors of month.  
+The overall accuracy of our model is a relatively weak value of `r DailyAQ_pred_accuracy`. This indicates that AQI and TMAX are not good predictors of month.  
 
-```{r knn ROC/AUC}
+```{r knn ROC/AUC, results='markup'}
 # multiclass ROC on test labels
 knnROC <- multiclass.roc(DailyAQ_testLabels, as.integer(DailyAQ_pred))
-knnROC
+knnROC$auc
 ```
-A multiclass ROC evaluation on the test labels yields an AUC value of 0.65, which is higher than expected based on the model's accuracy value. Still, this is not a significant result based on the AUC threshold of 0.8.  
+  
+A multi-class ROC evaluation on the test labels yields an AUC value of 0.65, which is higher than expected based on the model's accuracy value. Still, this is not a significant result based on the AUC threshold of 0.8.  
 
 # Local weather and local human social and economic activity
 
@@ -1154,7 +1154,7 @@ library(pROC)
 
 master_logFinal$prob=predict(prcp_logit, type = c("response"))
 prcp_roc <- roc(PRCP_factor ~ prob, data = master_logFinal)
-prcp_auc <- auc(prcp_roc)
+prcp_auc <- pROC::auc(prcp_roc)
 prcp_auc
 plot(prcp_roc)
 
@@ -1166,7 +1166,7 @@ prcp_pr2
 
 This is NOT a good logistic regression!!!
 
-## Summary of Key Findings
+# Summary of Key Findings
 
 We have statistically significant correlations on models using weather, air quality, and human activity data from NYC, but none of our models demonstrate high predictive potential.  
 
@@ -1176,7 +1176,7 @@ Cannot model seasonality with linear regressions. Potentially need to use season
 
 What data would enable us to answer the question if we had more time?
 
-## Conclusions
+# Conclusions
 - What were the limitations to your methods
 - Data availability issues. Not having all data we wanted to explore.
 - Brief model evaluation and comparison
@@ -1188,10 +1188,10 @@ We determined that the relationship between air quality and global warming is di
 
 Also, changes in climate are slow to take effect. A increase in emissions does not necessarily lead to increases in temperature on the same time scale. All these effects would need to be taken into consideration for an effective analysis.
 
-## References (APA Style)
+# References (APA Style)
 
 Lindsey, R.; Dahlman, L. (2022, June 28). _Climate change: Global temperature._ Climate.gov. Retrieved December 11, 2022, from https://www.climate.gov/news-features/understanding-climate/climate-change-global-temperature  
 
-United States Environmental Protection Agency, _Air Data Basic Information._, retrieved December 8, 2022, from, www.epa.gov/outdoor-air-quality-data/air-data-basic-information.
+United States Environmental Protection Agency, _Air Data Basic Information._, retrieved December 8, 2022, from, https://www.epa.gov/outdoor-air-quality-data/air-data-basic-information  
 
 NYC Environment and Health Data Portal, _Tracking changes in New York City's sources of air pollution._, published online April 12, 2021, retrieved December 6, 2022, from https://a816-dohbesp.nyc.gov/IndicatorPublic/beta/data-stories/aq-cooking/ 
