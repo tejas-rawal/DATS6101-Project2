@@ -101,9 +101,9 @@ NYweathshoot_06 <- NYweathshoot_06 %>% mutate(Shootings = ifelse(is.na(Shootings
 summary(NYweathshoot_06)
 ```
 
-CW ADD: Adding a 'TOT_PRCP' row that sums up the total precipitation between SNOW and PRCP. This row will be used in Question 3.
 
 ```{r}
+##CW ADD: Adding a 'TOT_PRCP' row that sums up the total precipitation between SNOW and PRCP. This row will be used in Question 3.
 
 NYweath_final <- NYweath_00
 NYweath_final$TOT_PRCP <- NYweath_00$PRCP + NYweath_00$SNOW
@@ -115,27 +115,20 @@ NYweath_final$TOT_PRCP <- NYweath_00$PRCP + NYweath_00$SNOW
 
 In this project, we are digging into the relationship between human activity and weather in New York city. Our three driving questions are:  
 
-- What we analyzed during Project 1  
-- Background of where we started from  
-- How we chose to continue  
+For our first project, we analyzed daily weather patterns from data collected at a weather station in Central Park, New York City made available online by the National Oceanic and Atmospheric Administration. Through our analysis, we confirmed that there was a statistically significant rise in daily maximum temperatures in Central Park over the last 122 years.  
 
-During our first project, we analyzed daily weather patterns from data collected at a weather station in Central Park, New York City. Through our analysis, we confirmed that there was a statistically significant rise in daily maximum temperatures over the last 122 years.  
+We performed an ANOVA test on daily maximum temperature values over different periods of time and found statistically significant results regarding variance in-between our samples. This led us to create linear models for the change in daily maximum temperature over time, revealing statistically significant warming at an average rate of about 0.025 degrees Fahrenheit per year from 1900-2022. This is in fact a larger increase in temperature than the average global warming trend reported by [INSERT ORGANISATION NAME HERE!] (an average of 0.014 degrees Fahrenheit per year). However, since 1982, average temperatures in Central Park have increased significantly less than average global warming, perhaps because much of the development in New York City took place during the first half of the century.  
 
-We performed an ANOVA test on daily maximum temperature values over different periods of time and found statistically significant results regarding variance in-between our samples. This led us to create linear models to predict the rate the change in daily maximum temperature over time.
+We had more questions about relationships between weather and human activity, which are explored here in our Final Project.  
+
 
 ## Our Research Questions
 
-For this project, we addressed the relationships between human activity, and weather by incorporating new datasets related to population, economic indicators, air quality, crime, and COVID-19.  
+For this project, we looked more directly at correlations between human activity and weather by incorporating new datasets related to population, air quality, crime (shootings and arrests), the stock market, and COVID-19.  
 
-1.  How do changes in NYC weather patterns correlate to changes in population and 
-    economic activity over the same time frame?  
-2.  Are there statistically measurable changes in NYC air quality over time, and are they
-    correlated to changes in daily maximum temperature observed in previous analysis?  
-3.  How do changes in weather patterns correlate to other local human activity, such as crime,
-    reported COVID cases, and stock market performance?  
-      - Emily - shooting model  
-      - Chris - other crime models
-
+1. Do changes in Central Park maximum daily temperatures also correlate to measures of human activity?  
+2. Are there statistically measurable changes in NYC air quality over time, and are they correlated to changes in daily maximum temperature observed in previous analysis?  
+3. How do daily weather patterns correlate to other local human activity, such as crime, reported COVID cases, and stock market performance?  
 
 # Local weather and global and local human environmental footprint
 
