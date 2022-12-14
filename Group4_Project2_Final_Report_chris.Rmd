@@ -1,0 +1,1273 @@
+---
+title: "Project 2 Code Analysis"
+author: "Team Awesomeness (Team 4): Chris, Tejas, Emily"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    code_folding: hide
+    number_sections: false
+    toc: yes
+    toc_depth: 3
+    toc_float: yes
+  pdf_document:
+    toc: yes
+    toc_depth: '3'
+---
+
+```{r include=FALSE}
+# The package "ezids" (EZ Intro to Data Science) includes a lot of the helper functions we developed for the course. 
+# Some of the frequently used functions are loadPkg(), xkabledply(), xkablesummary(), uzscale(), etc.
+library(ezids)
+ 
+# some of common options (and the defaults) are: 
+# include=T, eval=T, echo=T, results='hide'/'asis'/'markup',..., collapse=F, warning=T, message=T, error=T, cache=T, fig.width=6, fig.height=4, fig.dim=c(6,4) #inches, fig.align='left'/'center','right', 
+# knitr::opts_chunk$set(warning = F, results = "markup", message = F)
+knitr::opts_chunk$set(warning = F, results = "hide", message = F)
+options(scientific=T, digits = 3) 
+# options(scipen=9, digits = 3) 
+# ‘scipen’: integer. A penalty to be applied when deciding to print numeric values in fixed or exponential notation.  Positive values bias towards fixed and negative towards scientific notation: fixed notation will be preferred unless it is more than ‘scipen’ digits wider.
+# use scipen=999 to prevent scientific notation at all times
+```
+
+```{r data init}
+#loading packages 
+library(ezids)
+library(ggplot2)
+library(ggrepel)
+library(gridExtra)
+library(tibble)
+library(dplyr)
+library(tidyr)
+library(psych)
+library(corrplot)
+library(lattice)
+library(FNN)
+library(caret)
+library(pROC)
+
+#loading data 
+NYweath <- data.frame(read.csv("data/NYC_weather_1869_2022.csv"))
+
+#converting to R date format and adding columns for day, month, and year
+NYweath$DATE <- as.Date(NYweath$DATE)
+NYweath$day <- format(NYweath$DATE, format="%d")
+NYweath$month <- format(NYweath$DATE, format="%m")
+NYweath$year <- format(NYweath$DATE, format="%Y")
+#converting temperature observations to numerical
+NYweath$TMAX <- as.numeric(NYweath$TMAX)
+NYweath$TMIN <- as.numeric(NYweath$TMIN)
+NYweath$TAVG <- as.numeric(NYweath$TAVG)
+NYweath$year <- as.numeric(NYweath$year)
+#Making month a factor
+NYweath$month <- as.factor(NYweath$month)
+# subset data to desired variables
+NYweath_sub <- subset(NYweath, select = c(DATE, day, month, year, TMAX, TMIN, TAVG, PRCP, SNOW)) 
+#creating a subset for 1900 on
+NYweath_00 <- subset(NYweath_sub, year > 1899)
+xkabledplyhead(NYweath_00)
+
+
+#new data loading from Emily, New York State population from 1900 on 
+NYSPop_1900 <- data.frame(read.csv("data/NYSPop_1900-2021.csv"))
+NYSPop_1900$Population <- as.numeric(NYSPop_1900$Population)
+NYSPop_1900$Year <- as.numeric(NYSPop_1900$Year)
+
+#creating a subset for 1900-2021
+NYweath_00a <- subset(NYweath_sub, year > 1899)
+NYweath_00a <- subset(NYweath_00a, year < 2022)
+
+for(i in 1:length(NYweath_00a$year)){
+  (NYweath_00a$Pop[i]= NYSPop_1900$Population[(which(NYSPop_1900$Year == NYweath_00a$year[i]))]
+  )}
+
+#New data loading from Emily, shootings
+NYshoot <- data.frame(read.csv("data/Shooting_Counts_ERG.csv"))
+
+#converting to R date format and adding columns for day, month, and year
+NYshoot$DATE <- as.Date(NYshoot$Date, format = "%m/%d/%Y")
+
+#cleaning shooting data, merging with NYweath_00a
+NYweathshoot_06 <- subset (NYweath_00a, year > 2005)
+NYweathshoot_06 <- subset (NYweathshoot_06, year < 2022)
+
+NYweathshoot_06 <- full_join(NYshoot, NYweathshoot_06, by = "DATE")
+NYweathshoot_06$day <- format(NYweathshoot_06$DATE, format="%d")
+NYweathshoot_06$month <- format(NYweathshoot_06$DATE, format="%m")
+NYweathshoot_06$year <- format(NYweathshoot_06$DATE, format="%Y")
+NYweathshoot_06$day <- as.numeric(NYweathshoot_06$day)
+NYweathshoot_06$month <- as.factor(NYweathshoot_06$month)
+NYweathshoot_06$year <- as.numeric(NYweathshoot_06$year, format="%Y")
+NYweathshoot_06 <- NYweathshoot_06 %>% mutate(Shootings = ifelse(is.na(Shootings), 0, Shootings))
+summary(NYweathshoot_06)
+```
+
+CW ADD: Adding a 'TOT_PRCP' row that sums up the total precipitation between SNOW and PRCP. This row will be used in Question 3.
+
+```{r}
+
+NYweath_final <- NYweath_00
+NYweath_final$TOT_PRCP <- NYweath_00$PRCP + NYweath_00$SNOW
+
+```
+
+
+## Introduction  
+
+In this project, we are digging into the relationship between human activity and weather in New York city. Our three driving questions are:  
+
+- What we analyzed during Project 1  
+- Background of where we started from  
+- How we chose to continue  
+
+During our first project, we analyzed daily weather patterns from data collected at a weather station in Central Park, New York City. Through our analysis, we confirmed that there was a statistically significant rise in daily maximum temperatures over the last 122 years.  
+
+We performed an ANOVA test on daily maximum temperature values over different periods of time and found statistically significant results regarding variance in-between our samples. This led us to create linear models to predict the rate the change in daily maximum temperature over time.
+
+## Our Research Questions
+
+For this project, we addressed the relationships between human activity, and weather by incorporating new datasets related to population, economic indicators, air quality, crime, and COVID-19.  
+
+1.  How do changes in NYC weather patterns correlate to changes in population and 
+    economic activity over the same time frame?  
+2.  Are there statistically measurable changes in NYC air quality over time, and are they
+    correlated to changes in daily maximum temperature observed in previous analysis?  
+3.  How do changes in weather patterns correlate to other local human activity, such as crime,
+    reported COVID cases, and stock market performance?  
+      - Emily - shooting model  
+      - Chris - other crime models
+
+
+# Local weather and global and local human environmental footprint
+
+Emily will re-do linear regression looking at measures of local and global human activity as regressors rather than year. She might also look into variable transformations (i.e., linear models fit to polynomials of regressors) to see if the response is best fit as linear or polynomial.  
+
+At the end of our exploratory data analysis, we developed a linear model of maximum daily temperature over time, with year as a linear regressor. This revealed to us that there is a statistically significant increase in average maximum temperatures over time. However, we do not suspect that time is the cause-- rather, it is something else that has changed over time that has caused the warming in New York. We wanted to explore correlations with other, more direct proxies for human activity. 
+
+Our original fit used year as a numerical regressor and month as a categorical regressor. The resulting fit has an r-squared value of 0.775 and a slope of 0.025 degrees Fahrenheit per year, with all fit parameters' p-values well below 0.05. The different intercepts for the each level of the categorical variable (the twelve months of the year) indicated that January is the coldest and July the hottest month in Central Park, with an average difference in maximum daily temperature of approximately 46 degrees Fahrenheit in any given year over this window.  
+
+
+```{r}
+maxTfit00_ym <- lm(formula = TMAX ~ year + month, data = NYweath_00a )
+res00_ym <- residuals(maxTfit00_ym)
+summary(maxTfit00_ym)  
+
+```
+
+The two extremes and their linear models are plotted in the following figure.  
+
+
+```{r}
+#plot of just July and January
+
+ggplot(NYweath_00a, aes(x = year, y = TMAX, color = month)) +
+    geom_point() +
+    scale_color_manual(values = c("01" = "purple4",
+                                   "07" = "red"), na.value = NA) +
+    geom_abline(aes(intercept = -11.05508, slope = 0.02539), col = "black", size = 1) + 
+    geom_abline(aes(intercept = 34.98295, slope = 0.02539), col = "black", size = 1) +
+  
+    labs(
+        x = "Year",
+        y = "Maximum Daily Temperature",
+        title = "Maximum Daily Temperature in Central Park") +
+    xlab(label = "Year") +
+    ylab(label = "Maximum daily temperature") +
+    ggtitle(label = "Maximum Daily Temperature in Central Park")
+```
+
+
+Do other weather variables correlate to TMAX?
+
+```{r}
+NYweath_cor <- subset(NYweath_00a, select = c(year, TMAX, PRCP, SNOW))
+str(NYweath_cor)
+weathcor <- cor(NYweath_cor, use = "pairwise.complete.obs")
+corrplot::corrplot(weathcor)
+cor
+
+```
+
+We have found a reasonable linear model for temperature over time, but can we look instead at the connection to human activities, rather than time? Can we use some aspect of human activity as a regressor and generate a reasonable model?
+
+
+We looked to the Census for U.S. population data, but that is only reported decennially, so we looked for other sources. We found historical data back to 1960 for New York state online https://www.macrotrends.net/cities/23083/new-york-city/population. Because this source is not known to us, we validated it against decennial census data.  
+
+
+A bunch of linear models...
+
+```{r}
+#LM1
+maxTfit00_m <- lm(formula = TMAX ~ month, data = NYweath_00a)
+summary(maxTfit00_m)  
+
+```
+
+```{r}
+#LM4
+maxTfit00_all <- lm(formula = TMAX ~ year + month + PRCP, data = NYweath_00a)
+summary(maxTfit00_all)  
+
+```
+
+```{r}
+#maxTfit00_all_intrxn <- lm(formula = TMAX ~ year + month*day + PRCP + SNOW, data = NYweath_00a)
+#summary(maxTfit00_all)  
+
+```
+
+```{r}
+#anova(maxTfit00_m, maxTfit00_ym)
+
+```
+
+```{r}
+#anova(maxTfit00_all, maxTfit00_all_intrxn)
+```
+
+
+```{r}
+#LM2
+maxTfit00_pop <- lm(formula = TMAX ~ Pop + month, data = NYweath_00a)
+summary(maxTfit00_pop)  
+
+```
+
+```{r}
+#maxTfit00_pop_all <- lm(formula = TMAX ~ Pop + month + PRCP, data = NYweath_00a)
+#summary(maxTfit00_pop)  
+
+```
+
+```{r}
+#plot of NYS Pop over time
+
+ggplot(NYweath_00a, aes(x = year, y = Pop)) +
+    geom_point() +
+#    geom_abline(aes(intercept = -11.05508, slope = 0.02539), col = "black", size = 1) + 
+    labs(
+        x = "Year",
+        y = "New York State Population",
+        title = "Annual Population of New York State") +
+    xlab(label = "Year") +
+    ylab(label = "New York State Population") +
+    ggtitle(label = "Annual Population in New York State")
+```
+  
+
+
+
+## Relationships between Local weather and air quality
+
+The AQI is an index for reporting daily air quality. It tells how clean or polluted the air is, and what associated health effects might be a concern for the public. The higher the AQI value, the the greater the level of air pollution and greater the health concern. Outdoor concentrations of pollutants such as Ozone, Carbon Monoxide, Nitrogen dioxide, Sulfur Dioxide, and PM2.5/PM10 concentrations are measured at stations across New York City and reported to the EPA. The Daily Air Quality Index (AQI) is calculated based on these concentration values and stored within the EPA's Air Quality System database. 
+
+As city life changes, so does its air quality. Sources of emissions such as traffic and burning of fossil fuels for energy generation can cause air quality to deteriorate. Emissions can also contribute to global warming by releasing more greenhouse gasses into the atmosphere, thus increasing average temperatures. As more people migrate to urban areas, we will continue to see a deterioration in air quality unless measures are taken. The goal for integrating this data is to study the affects of weather patterns on air quality, and to statistically verify changes in air quality over time in New York City.  
+
+The dataset contains about 7,000 observations collected from January, 2000 to October, 2022.  
+
+```{r load air quality data, echo=F}
+# Load data and view structure
+DailyAQ_00_22 <- data.frame(read.csv("data/daily-AQ-NY-00-20.csv"))
+DailyAQ_00_22 <- DailyAQ_00_22[c('Date', 'DAILY_AQI_VALUE')]
+colnames(DailyAQ_00_22) <- c('DATE', 'AQI')
+str(DailyAQ_00_22)
+xkablesummary(DailyAQ_00_22)
+xkabledplyhead(DailyAQ_00_22)
+```
+
+
+```{r formatting, echo=F}
+# format variables
+DailyAQ_00_22$DATE <- as.Date(DailyAQ_00_22$DATE, "%m/%d/%y")
+
+DailyAQ_00_22$year = as.numeric(format(DailyAQ_00_22$DATE, "%Y"))
+
+DailyAQ_00_22_Yearly_Growth <- DailyAQ_00_22 %>%
+  group_by(year) %>%
+  summarize(aqi_total = sum(AQI, na.rm=T),
+            aqi_avg = mean(AQI, na.rm=T))
+
+DailyAQ_00_22_Yearly_Growth <- DailyAQ_00_22_Yearly_Growth %>%
+  mutate(aqi_diffRate = ((aqi_avg - lag(aqi_avg)) / aqi_avg) * 100)
+
+```
+
+We start by looking at the distribution of our variables of interest: AQI.
+
+```{r daily aqi plots, results='asis'}
+# distribution plot of pmi2.5 and daily AQI
+mean_aqi <- mean(DailyAQ_00_22$AQI)
+
+ggplot(DailyAQ_00_22) +
+  geom_histogram(aes(x=AQI), na.rm=TRUE, alpha=0.5, color="black", fill='#2DD164', bins=50, binwidth=5) +
+  geom_vline(xintercept=mean_aqi, color="black", size=1, linetype=5, show.legend=FALSE) +
+  annotate("text", x=mean_aqi + 9, y=625, label=paste(round(mean_aqi, 2)), angle=0, size=4, color="black") +
+  labs(title="Distribution of Daily AQI Level", x="", y="Count")
+
+```
+In the histogram depicting the distribution of AQI, we can gauge that the distribution is fairly normal. Although it is slight right skewed, the number of data points suggests we can treat it as normal for our modeling. The right-skewness is caused by days with unusually high AQI values.  
+
+```{r year-over-year rate, results='asis'}
+ggplot(DailyAQ_00_22_Yearly_Growth, aes(group=1)) +
+  geom_line(aes(x = year, y = aqi_diffRate), na.rm = T, stat="identity", color="#043008", size=1) +
+  geom_point(aes(x = year, y = aqi_diffRate), na.rm = TRUE, fill="#E6E930", shape = 23) +
+  labs(title="AQI year-over-year rate in NYC", x="Year", y="AQI") +
+  theme(
+    axis.title.y = element_text(color = "#043008", size = 13),
+    axis.title.y.right = element_text(color = "#E6E930", size = 13)
+  )
+```
+
+The year-over-year growth rate was also calculated based on yearly average AQI and is depicted in the 2nd line plot. We see an alternating pattern between years that increases in variance as we move towards 2022.  
+
+In order to evaluate correlation between weather and air quality, we combined our dataset with the NYC weather data based on the date value in each. Dates without a matching air quality measurement are dropped. Subsequent models will be built using this merged dataframe.
+ 
+```{r combine and clean data}
+# merge data frame by date
+DailyAQ_merged <- merge(DailyAQ_00_22, NYweath_00, by="DATE")
+# select required columns
+DailyAQ_merged <- DailyAQ_merged[ , c('DATE', 'year.x', 'month', 'AQI', 'TMAX', 'TMIN', 'PRCP', 'SNOW')]
+colnames(DailyAQ_merged)[2] <- "year"
+str(DailyAQ_merged)
+xkablesummary(DailyAQ_merged)
+```
+
+The first step to building linear models is assessing correlation between numerical variables in the data. Because the year variable in our dataset begins at 2000, it will unnecessarily scale our coefficients when used in linear modeling. We properly scaled the variable to start at 0 (and continue to 22 to represent 2022).  
+
+The correlation is evaluated via a pairs plot, which depicts the correlation coefficient between numerical variables and scatterplots of their relationships. The pairs plot uses the Pearson correlation method.
+
+```{r data prep}
+# subset to numerical variables
+DailyAQ_numerics <- DailyAQ_merged[ , c('AQI', 'TMAX', 'TMIN', 'PRCP', 'SNOW', 'year')]
+DailyAQ_numerics$year <- DailyAQ_numerics$year - 2000 
+```
+
+
+```{r pairs}
+pairs.panels(DailyAQ_numerics, 
+  method = "pearson", # correlation method
+  hist.col = "red", # set histogram color
+  density = TRUE,  # show density plots
+  ellipses = TRUE, # show correlation ellipses
+  smoother = TRUE,
+  lm = TRUE,
+  main = "Pairs Plot Of Weather and Air Quality Numerical Variables",
+  cex.labels=0.75
+)
+```
+
+From the pearson pairsplot above, we can see a moderately high, negative correlation value between year and AQI. This indicates that as the year increases, the AQI is actually dropping resulting in better air quality in the city. 
+
+To better observe the effects of year on AQI, we can visualize the yearly average AQI.
+
+```{r AQI vs year}
+# yearly average and year-over year growth of daily AQI and PM2.5
+ggplot(DailyAQ_00_22_Yearly_Growth) +
+  geom_line(aes(x = year, y = aqi_avg), stat="identity", color="#2DD164", size=1) +
+  geom_point(aes(x = year, y = aqi_avg), na.rm = TRUE, fill="#457108", shape = 21) +
+  labs(title="Average AQI by year in NYC", x="Year", y="AQI value")
+```
+
+The line plot confirms the correlation value we observed in the pairs plot. The average yearly AQI is indeed decreasing as year increases. To further test our observations, we will build a linear model using year as a regressor to estimate daily AQI.  
+
+```{r linear model}
+aqi_fit <- lm(AQI ~ year, data = DailyAQ_numerics)
+summary(aqi_fit)
+xkabledply(aqi_fit, title = paste("First Linear Model: ", format( formula(aqi_fit) )))
+```
+
+The results of our linear model reveal a significant value for both the intercept and year coefficient. The coefficient value for the year regressor, `r aqi_fit$coefficients[2]`, indicates that for every year increase, the predicted daily AQI decreases by a factor of 1.78. This supports the correlation coefficient we saw earlier between these two variables. The p-value of the F-statistic is also significant, but the $R^2$ value of the model is a measly 0.28. Based on this model, the year only explains 28% of the variability in daily AQI measurements. This is not a significantly high result. Looking at the scatterplot of the relationship can help explain the weak fit.
+
+```{r lm plot}
+ggplot(DailyAQ_00_22, aes(x = year, y = AQI)) + 
+  geom_point(alpha = 0.5, color = "#2DD164", position = "jitter") +
+  labs(x = "Year", y = "AQI Value", title = "Daily AQI Values From 2000-2022 With Trend Line") +
+  geom_smooth(method = 'lm', formula = 'y ~ x', color = "black", fill="black")
+```
+
+As we can see, there is a high degree of noise when observing daily AQI values at the yearly level. Although the plot displays a slightly downward trend in daily AQI, but model fit is distorted. This helps explain the results we received from our linear model.  
+
+Can we add more or different predictors to improve the fit? In our first analysis, we looked at linear trends of TMAX over time and determined a slight positive correlation observed over the years 1900-2022. We also utilized month as a categorical regressor to help explain the variance in daily maximum temperatures. Based on those results, we concluded that seasonality trends had a negative impact on model performance. Perhaps seasonality also also plays a part in daily AQI measurements?  
+
+```{r average AQI and TMAX vs year}
+# NYC weather - Avg TMAX by month
+NYweath_Monthly_Avg <- NYweath_00 %>%
+  group_by(month) %>%
+  summarize(avg_max_temp = mean(TMAX, na.rm=T),
+            avg_min_temp = mean(TMIN, na.rm=T))
+
+
+ggplot(NYweath_Monthly_Avg, aes(x = as.numeric(month), y = avg_max_temp)) +
+  geom_line(color="#F21E1E", size = 2) +
+  geom_point(na.rm = TRUE, fill="#126BF4", shape = 21, size = 4) +
+  labs(title="Average TMAX By Month in NYC", x="Month", y="Temperature (°F)") +
+  scale_x_continuous(name = "Month",
+                     breaks = c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12))
+```
+
+To refresh our memories, we included the monthly average daily maximum temperature. A seasonal trend can be observed as temperatures increase during summer months and decrease during winter months.
+
+```{r monthly average AQI}
+DailyAQ_monthly <- DailyAQ_merged %>%
+  group_by(month) %>%
+  summarize(aqi_avg = mean(AQI, na.rm=T))
+
+
+# monthly average AQI
+ggplot(DailyAQ_monthly, aes(x = as.numeric(month), y = aqi_avg)) +
+  geom_line(color="#47ABE9", size = 2) +
+  geom_point(na.rm = TRUE, fill="#C10808", shape = 21, size = 4) +
+  labs(title="Average AQI By Month in NYC", x="Month", y="AQI") +
+  scale_x_continuous(name = "Month",
+                     breaks = c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12))
+```
+
+Plotting the average AQI by month, we can see seasonal trends as AQI values are generally high during winter and summer months but the low in the months between.  
+
+Based on this, we can modify our last model and attempt to fit seasonality by adding `month` as a categorical regressor, along with our variable-of-interest from the last project - TMAX.
+
+```{r second linear model}
+aqi_fit2 <- lm(AQI ~ TMAX + month, data = DailyAQ_merged)
+summary(aqi_fit2)
+xkabledply(aqi_fit2, title = paste("Second Linear Model: ", format( formula(aqi_fit2) )))
+```
+
+The regression coefficient for TMAX is significant and positively correlated, with each degree Fahrenheit increase resulting in AQI increasing by a factor of 0.68. The regression coefficients for all month categories are also significant. In fact, every month has a negative impact on AQI when compared to January. September exhibits the largest difference, with a predicted AQI almost 44 points lower than January!  
+
+The p-value of the model's F-statistic is also significant, allowing us to reject the null hypothesis and conclude that there’s a significant relationship between our chosen predictors and the daily AQI value. However, the $R^2$ for our model is only `.149`, which is weaker than our previous model. This indicates that only 14.7% of the variation in daily AQI can be explained by TMAX and month.  
+
+```{r model 1 VIF}
+# model VIF scores
+xkablevif(aqi_fit2, title = "Model 2 VIF")
+```
+
+The VIF scores for all regressors are in an acceptable range, however the fit is still poor.  
+
+From our results, we can conclude that linear models provide an inaccurate representation of the effects of seasonality within our data.  
+
+It seems that due to seasonality, and the nature of time-series data, we cannot properly model daily AQI using linear regression. Perhaps a classification technique can be utilized to properly address the seasonal trends. More precisely, we can build a kNN model to classify the month based on daily AQI and maximum temperature values.  
+  
+We start with plotting the relationship between our chosen predictors and add a layer to discern month within the scatter.
+  
+```{r scatter plots, fig.width=4, fig.height=2}
+ggplot(DailyAQ_merged) +
+    geom_point(aes(x=AQI, y=TMAX, color=month), alpha = 0.7) +
+    labs(title = "Daily Maximum Temperature vs Daily Air Quality Index Value Distinguished By Month",
+         x = "Daily AQI Value",
+         y = "Daily Maximum Temperature (F)") +
+  scale_color_brewer(palette = "Paired")
+```
+
+We can make out minimal distinction of month from the scatterplot above, but the model will provide a more detailed analysis.  
+
+The kNN model requires us to center and scale our predictor values, as they are recorded in vastly different units of measurement. We also need to split our dataset into training and testing frames. We used a 4:1 split for to satisty this requirement.
+
+```{r normalize data}
+# center and scale our data
+DailyAQ_scaled <- as.data.frame(scale(DailyAQ_merged[4:5], center = TRUE, scale = TRUE))
+str(DailyAQ_scaled)
+```
+
+
+```{r train/test splits}
+# create train and test data sets with 4:1 splits
+set.seed(1000)
+DailyAQ_sample <- sample(2, nrow(DailyAQ_scaled), replace=TRUE, prob=c(0.80, 0.20))
+
+DailyAQ_training <- DailyAQ_scaled[DailyAQ_sample == 1, ]
+DailyAQ_test <- DailyAQ_scaled[DailyAQ_sample == 2, ]
+
+# create label sets.
+DailyAQ_trainLabels <- DailyAQ_merged[DailyAQ_sample == 1, 3]
+DailyAQ_testLabels <- DailyAQ_merged[DailyAQ_sample == 2, 3]
+
+nrow(DailyAQ_training)
+nrow(DailyAQ_test)
+```
+
+
+```{r evaluate for range of k}
+evaluateK = function(k, train_set, val_set, train_class, val_class){
+  
+  # Build knn with k neighbors considered.
+  set.seed(1000)
+  class_knn = knn(train = train_set,    #<- training set cases
+                  test = val_set,       #<- test set cases
+                  cl = train_class,     #<- category for classification
+                  k = k)                #<- number of neighbors considered
+  
+  tab = table(class_knn, val_class)
+  
+  # Calculate the accuracy.
+  accu = sum(tab[row(tab) == col(tab)]) / sum(tab)                         
+  cbind(k = k, accuracy = accu)
+}
+
+# call evaluateK function for each odd k-value between 1 to 21
+knn_different_k = sapply(seq(1, 21, by = 2),
+                         function(x) evaluateK(x, 
+                                             train_set = DailyAQ_training,
+                                             val_set = DailyAQ_test,
+                                             train_class = DailyAQ_trainLabels,
+                                             val_class = DailyAQ_testLabels))
+
+# Reformat the results
+knn_different_k = data.frame(k = knn_different_k[1,],
+                             accuracy = knn_different_k[2,])
+```
+
+```{r accuracy vs k plot}
+
+ggplot(knn_different_k, aes(x = k, y = accuracy)) +
+  geom_line(color = "orange", size = 1.5) +
+  geom_point(size = 3) + 
+  labs(title = "kNN Model Accuracy vs k-value",
+       x = "Model k-value",
+       y = "Accuracy")
+```
+
+To find the best k-value for our model, we evaluated the model over a range of k from 1 to 21. From the plot about, it seems 13-nearest neighbors is a decent choice since it provides the greatest improvement in predictive accuracy before the incremental improvement trails off.  
+
+```{r kNN model}
+# set kval
+kval <- 13
+
+# build model
+DailyAQ_pred <- FNN::knn(train = DailyAQ_training,
+                    test = DailyAQ_test,
+                    cl = DailyAQ_trainLabels,
+                    k = kval)
+
+# confusion matrix
+DailyAQ_confusionMatrix <- caret::confusionMatrix(DailyAQ_pred, reference = DailyAQ_testLabels)
+DailyAQ_pred_accuracy <- DailyAQ_confusionMatrix$overall['Accuracy']
+
+
+xkabledply(as.matrix(DailyAQ_confusionMatrix), title = paste("ConfusionMatrix for k = ", kval))
+xkabledply(data.frame(DailyAQ_confusionMatrix$byClass), title=paste("k = ", kval))
+```
+
+The overall accuracy of our model is a relatively weak value of `r DailyAQ_pred_accuracy`. This indicates that AQI and TMAX were not good predictors of month.  
+
+```{r knn ROC/AUC}
+# multiclass ROC on test labels
+knnROC <- multiclass.roc(DailyAQ_testLabels, as.integer(DailyAQ_pred))
+knnROC
+```
+A multiclass ROC evaluation on the test labels yields an AUC value of 0.65, which is higher than expected based on the model's accuracy value. Still, this is not a significant result based on the AUC threshold of 0.8.  
+
+# Local weather and local human social and economic activity
+
+The last question our team set out to address if a relationship exists between local weather and local human social and economic activity. The relationship has been been explored in the past with evidence suggesting weather has effects on an individuals mood, thermal comfort level, social interaction and can influence traffic, travel, public health, crime rates, and even stock prices (Horanont, 2013). Our team looked to expand on this prior work by making these observations at the local level of New York City. We decided to look specifically at the relationship between local weather and crime rates,stock prices, and public health. 
+
+Two data sets were used to explore weather's impact on crime rates. First we looked at NYC shootings with 5,409 observations and then all arrests with 5,844 observations. Both of these data sets were available through NYC's Open Data repository and had data from 2006-2021.
+
+To interrogate weather's impact on public health, our team looked at COVID-19 case counts in New York City. The data was available from New York City's Open Data repository. The data set consisted of 991 observations between February 29th, 2020 and present day.
+
+
+For stock market data, we looked at the total daily trade for the DOW Jones Industrial Index. This data contained 10,822 observations dating back to December 25, 1979, however trade volume has was only available since 1988.
+
+To draw conclusions about weather's relationship with human activity, we use TMAX and a binary factor of total precipitation as the predictor weather variables. We incorporated month and year into these relationships as we saw seasonality effects and changes over time in our previous effort.
+
+
+```{r}
+# correlation between shooting & weather data from Emily
+NYweathshoot_06_cor <- subset(NYweathshoot_06, select = c(year, day, TMAX, PRCP, SNOW, Shootings, Murders))
+str(NYweathshoot_06_cor)
+shootcor <- cor(NYweathshoot_06_cor, use = "pairwise.complete.obs")
+corrplot::corrplot(shootcor)
+cor
+```
+
+```{r}
+#plot from Emily
+ggplot(NYweathshoot_06) +
+  geom_histogram(aes(x=Shootings), na.rm=TRUE, alpha=0.5, color="black", bins=100, binwidth=2, fill = "green") + 
+  labs(title="Distribution of daily NYC shootings (2006-2021)", x="Number of daily Shootings", y="Count")
+
+#Not quite normal-- necessarily right-skewed, but a lot of data points...
+
+```
+```{r average # shootings bar plot, results='asis'}
+
+#ERG
+shoot_Month <- NYweathshoot_06 %>%
+  group_by(month) %>%
+  summarize("Shootings" = mean(Shootings, na.rm=T),
+            "Shooting murders" = mean(Murders, na.rm=T))
+
+# side-by-side bar plot
+shoot_Month %>%
+  dplyr::select(month, "Shootings", "Shooting murders") %>%
+  gather(key="Value", value="Count", "Shootings", "Shooting murders") %>% 
+  ggplot(aes(x=month, y=Count, fill=Value)) +
+  geom_col(na.rm=TRUE, alpha=0.5, color="black", position="dodge") +
+  labs(title="Average NYC daily shootings (2006-2021) by month", x="Month", y="Number of shootings") +
+  scale_fill_manual(values=c("red", "blue"))
+
+```
+
+```{r}
+#making scatter plot of Shootings v TMAX-- ERG Add
+ggplot(NYweathshoot_06, aes(x = TMAX, y = Shootings, color = month)) +
+    geom_point() +
+  #  scale_color_gradient(low="red", high="blue") +   
+  #scale_color_manual(values = c("01" = "purple4",
+#                                   "07" = "red"), na.value = NA) +
+    #geom_abline(aes(intercept = -11.05508, slope = 0.02539), col = "black", size = 1) + 
+    labs(
+        x = "Year",
+        y = "Maximum Daily Temperature",
+        title = "Maximum Daily Temperature in Central Park") +
+    xlab(label = "TMAX (degrees Fahrenheit)") +
+    ylab(label = "# Shootings") +
+    ggtitle(label = "Number of NYC Shootings v. TMAX")
+```
+
+```{r}
+#modeling Shootings
+
+#shoot_lm <- lm(formula = Shootings ~ year + month + day + SNOW + PRCP + TMAX + TMIN, data = NYweathshoot_06) 
+NYweathshoot_06$month <- as.factor(NYweathshoot_06$month)
+#shoot_lm <- lm(formula = Shootings ~ year + month + SNOW + PRCP + TMAX, data = NYweathshoot_06) 
+shoot_lm <- lm(formula = Shootings ~ year + SNOW + PRCP + TMAX, data = NYweathshoot_06) 
+summary(shoot_lm) 
+
+```
+
+
+
+
+```{r}
+# Add a column to convert PRCP to a binary factor variable. Don't care how much it rains, only if it rains. 
+NYweath_prcpFact <-NYweath_final
+
+NYweath_prcpFact$PRCP_factor <- cut(NYweath_final$TOT_PRCP, c(-Inf,0, Inf), labels = c(0,1))
+NYweath_prcpFact$PRCP_factor <- as.factor(NYweath_prcpFact$PRCP_factor)
+
+
+
+```
+
+### Crime data
+
+After looking at the relationship between reported shootings in NYC and local weather, we expanded our comparison to all arrests, not just shootings. This data was not previously analyzed by our group so we did some basic EDA to determine the distribution of the new data and identify correlations that exist.
+
+```{r}
+
+#NYcrime <- data.frame(read.csv("/Users/christopherwasher/Documents/DATS6101/NYPD_Arrests_Data__Historic_.csv"))
+
+
+
+#NYcrime_agg <- NYcrime %>% count(ARREST_DATE)
+
+NYcrime_count <- tibble(read.csv("./data/NYPD_Arrests_counts.csv"))
+
+NYcrime_count$ARREST_DATE <- as.Date(NYcrime_count$ARREST_DATE, format = "%Y-%m-%d")
+#NYcrime_count$day <- format(NYcrime_count$ARREST_DATE, format="%d")
+#NYcrime_count$month <- format(NYcrime_count$ARREST_DATE, format="%m")
+#NYcrime_count$year <- format(NYcrime_count$ARREST_DATE, format="%Y")
+
+colnames(NYcrime_count)[2] <- "ARREST_DATE"
+
+head(NYcrime_count)
+summary(NYcrime_count)
+
+```
+
+
+```{r}
+
+
+#crime_plot <- plot(NYcrime_count$ARREST_DATE, NYcrime_count$NUM_ARREST)
+#crime_boxplot <- boxplot(NYcrime_count$NUM_ARREST)
+crime_hist <- ggplot(NYcrime_count, aes(x = NYcrime_count$NUM_ARREST)) + 
+  geom_histogram(fill = "cornflowerblue") + 
+  labs(x = "Number Daily Arrests",
+       title = "Distribution of Daily NYC Arrest Counts")
+crime_hist
+
+```
+
+The histogram shows the distribution of the number of daily arrests in NYC since 2006. There appears to be a slight bimodal distribution to the number of daily arrests. However, because of the large sample size, we will consider this a normal distribution.
+
+We incorporated the crime data with the weather data to look for any additional correlations. We plotted arrest counts as the independent variable and temperature as the independent variable, with points coded by precipitation and month. This plot is below. There are no initial patterns that can be discerned by this chart. 
+
+```{r, results='markup'}
+
+
+crimeWeather <- subset(NYweath_prcpFact, year >= 2006 & year < 2022)
+NYcrime_count <- NYcrime_count[order(NYcrime_count$ARREST_DATE),]
+
+tail(crimeWeather)
+NYweath_crime <- cbind(crimeWeather, NYcrime_count$NUM_ARREST)
+colnames(NYweath_crime)[12] <- c("NUM_ARREST")
+
+#NYweath_crime_plot <- plot(sqrt(NYweath_crime$PRCP), NYweath_crime$NUM_ARREST)
+#boxplot((NYweath_crime$TOT_PRCP))
+
+#NY_weathcrime_ggplot <- ggplot(NYweath_crime,
+ #                              aes(x = TMAX, y =NUM_ARREST)) + 
+  #geom_point(aes(colour = PRCP_factor), alpha = 0.5) +
+  #labs(x = "Temperature (ºF)", y = "Number of Daily Arrests", 
+  #     title = "Weather Patterns for NYC Crime")
+#NY_weathcrime_ggplot
+
+NY_weathcrime_ggplot2 <- NYweath_crime %>% 
+  sample_frac(0.25) %>%
+  ggplot(aes(x = TMAX, y =NUM_ARREST)) + 
+  geom_point(aes(shape = PRCP_factor, colour = month)) +
+  labs(x = "Temperature (ºF)", y = "Number of Daily Arrests", 
+       title = "Weather Patterns for NYC Crime") + 
+  guides(colour = guide_legend(nrow = 6))
+NY_weathcrime_ggplot2
+
+```
+
+
+
+```{r}
+
+crime_prcp1 <- subset(NYweath_crime, PRCP_factor == 1)
+crime_prcp0 <- subset(NYweath_crime, PRCP_factor == 0)
+
+crime_count_ttest <- t.test(crime_prcp0$NUM_ARREST, crime_prcp1$NUM_ARREST)
+crime_count_ttest
+
+
+```
+
+Before looking at the correlation between all variables, we performed a t-test to determine if there was a statistical difference in the number of arrests on days with precipitation and days without precipitation. The t-test found a statistically significant different mean number of arrests on days with and without precipitation, with a higher number of arrests on days without precipitation. 
+
+We also looked at the a correlation plot for weather variables and arrests. The strongest correlation exists between number of arrests and year, followed by month. Temperature appears to have no correlation with crime while precipitation has a very minimal negative correlation with crime. However, because we know temperature and precipitation have a seasonal component to them, and the t-test showed precipitation had some effect on arrests, these correlations might not tell the whole story. We decided to create a linear regression model that incorporates all of these variables.
+
+```{r, results = 'markup'}
+crime_cor_data <- NYweath_crime
+crime_cor_data$NUM_ARREST <- as.numeric(crime_cor_data$NUM_ARREST)
+crime_cor_data <- cbind(crime_cor_data[3:6], crime_cor_data[8:12])
+
+pairs.panels(crime_cor_data, 
+             method = "pearson", # correlation method
+             hist.col = "#00AFBB",
+             density = FALSE,  # show density plots
+             ellipses = FALSE, # show correlation ellipses
+             )
+
+```
+
+
+```{r}
+
+#crimeWeath_lm <- lm(NUM_ARREST ~ TMAX + PRCP_factor + year,  
+                 #   data = NYweath_crime)
+crimeWeathMonth_lm <- lm(NUM_ARREST ~ TMAX + PRCP_factor + year + month, 
+                    data = NYweath_crime)
+#crimeWeathTMIN_lm <- lm(NUM_ARREST ~ (TMIN + PRCP_factor), 
+#                    data = NYweath_crime)
+
+#summary(crimeWeathMonth_lm)
+xkabledply(crimeWeathMonth_lm, title = paste("Linear Model: ",                                           format(formula(crimeWeathMonth_lm) )))
+
+```
+
+The linear model of arrests as predicted by of temperature, precipitation, year, and month regressors. The model has an overall R^2 value 0.427 which is a weak overall fit for the data, but does indicate that these regressors explain some of the variability in the data. The coefficients for TMAX, Precipitation Factor, year, and most months are statistically significant.
+
+There is a weak positive relationship between arrests and TMAX, for every degree increase in temperature there are about 2.34 more arrests.  Precipitation had a slightly more impactful effect on the number of daily arrests. The linear model shows a decrease of 46.13 arrests on days with precipitation, confirming what we saw in our t-test. The model also shows a decreasing number of arrests over time and that most months have a statistically significant relationship with the number of daily arrests.
+
+Overall, we can see that there are statistically significant relationships between weather and crime in NYC. This indicates that local weather conditions have some effect on local human activity but we still want to explore additional variables.
+
+
+### Stock Market Data
+
+Next, we looked at the effect weather has on the stock market, specifically by looking at the trade volume of the Dow Jones Industrial index in the 1990s. We looked at this time period in particular due to the transition to digital stock trading with the rise of computers. We hypothesized that if weather had an effect on trade volume, the effect would be greatest for this time given the data available.
+
+To start investigating this relationship, initial EDA was performed. Again, we looked at the distribution of the data and correlations that exist between the variables.
+
+``` {r}
+
+NYstock <- tibble(read.csv("./data/Dow Jones Industrial Average Historical Data.csv"))
+
+tail(NYstock)
+
+NYstock$Date <- as.Date(NYstock$Date, format = "%m/%d/%y")
+
+NYstock2 <- NYstock
+NYstock2 <- NYstock2 %>% 
+  complete(Date = seq.Date(min(Date), max(Date), by="day"))
+
+options(scientific=T, digits = 10)
+
+# This is all just test code for figuring out how to clean the data. 
+# Not part of final script.
+#NYstocktest <- NYstock2
+#NYstocktest$Vol. = substr(NYstocktest$Vol.,1,nchar(NYstocktest$Vol.)-1)
+#tail(NYstocktest)
+
+
+#NYstocktest$Price <- gsub(",", "", NYstocktest$Price)
+#NYstocktest[3:5] <- lapply(NYstocktest[3:5], gsub, pattern = ",", replacement = "") 
+#NYstocktest$Change.. <- gsub("%", "", NYstocktest$Change..)
+#NYstocktest[2:7] <- sapply(NYstocktest[2:7], as.numeric)
+###
+
+NYstock2$Vol. = substr(NYstock2$Vol., 1, nchar(NYstock2$Vol.) - 1)
+NYstock2[2:5] <- lapply(NYstock2[2:5], gsub, pattern = ",", replacement = "") 
+NYstock2$Change.. <- gsub("%", "", NYstock2$Change..)
+NYstock2[2:7] <- sapply(NYstock2[2:7], as.numeric)
+
+NYstock2$day <- format(NYstock2$Date, format="%d")
+NYstock2$month <- format(NYstock2$Date, format="%m")
+NYstock2$year <- format(NYstock2$Date, format="%Y")
+
+
+
+head(NYstock2)
+summary(NYstock2)
+options(scientific=T, digits = 3) 
+
+```
+
+
+```{r}
+
+NYstock_final <- NYstock2[,c("Date", "Vol.")]
+NYstock_final <- subset(NYstock_final, Date <= "2022-09-26")
+weather_stockDates <- subset(NYweath_prcpFact, DATE >= "1979-12-25")
+
+stockWeather <- cbind(weather_stockDates, NYstock_final)
+colnames(stockWeather)[13] <- c("Volume")
+
+```
+
+
+```{r, results='markup'}
+stockWeather_rmNA <- subset(stockWeather, !is.na(Volume))
+stock_hist <- hist(stockWeather_rmNA$Volume)
+stockWeather_rmNA_gghist <- ggplot(stockWeather_rmNA, 
+                                   aes(x = stockWeather_rmNA$Volume)) + 
+  geom_histogram(fill = "cornflowerblue") + 
+  labs(x = "Total Daily Trade Volume (M) ",
+       title = "Distribution of Daily DOW Trade Volume")
+stockWeather_rmNA_gghist
+
+```
+
+The histogram of the daily DOW trade volume shows the data is right skewed. We plan to use this data in a linear model so we will use a square root normalization of the volume, and reexamine the distribution.
+
+```{r, results='markup'}
+
+stockWeather_rmNA$Volume_norm <- sqrt(stockWeather_rmNA$Volume)
+stockWeather_rmNA <- subset(stockWeather_rmNA, select = -c(Date))
+stockWeather_90s <- subset(stockWeather_rmNA, year >= 1988 & year <= 1999)
+
+#hist(stockWeather_90s$Volume_norm)
+#boxplot(stockWeather_rmNA$Volume_norm)
+stockWeather90Norm_rmNA_gghist <- ggplot(stockWeather_90s, 
+                            aes(x = stockWeather_90s$Volume_norm)) +
+  geom_histogram(fill = "cornflowerblue") + 
+  labs(x = "Normalized Daily Trade Volume (M) ",
+       title = "Distribution of Normalized DOW Trade Volume")
+stockWeather90Norm_rmNA_gghist
+
+```
+
+The distribution of sqrt Volume is considerably more normal, although there still appears to be a right-skew to the distribution. Given the number of observations, we will again assume this is a normal enough distribution for further analysis.
+
+
+```{r}
+
+stock_prcp1 <- subset(stockWeather_90s, PRCP_factor == 1)
+stock_prcp0 <- subset(stockWeather_90s, PRCP_factor == 0)
+
+stock_count_ttest <- t.test(stock_prcp0$Volume_norm,
+                            stock_prcp1$Volume_norm)
+stock_count_ttest
+
+
+```
+
+A t-test was performed to compare the mean normalized stock trade volume on days with and without precipitation. The t-test did not reject the null hypothesis as the values are nearly identical regardless of precipitation. We then wanted to look at correlations between all the variables.
+
+
+```{r, results='markup'}
+
+pairs.panels(stockWeather_90s[c("year", "month", "TMAX",
+                                "TOT_PRCP","PRCP_factor",
+                                 "Volume","Volume_norm")], 
+             method = "pearson", # correlation method
+             hist.col = "#00AFBB",
+             density = FALSE,  # show density plots
+             ellipses = FALSE # show correlation ellipses
+             )
+
+```
+
+The only strong correlation that exists in this data set is the relationship between year and the stock trade volume. There are no other strong correlations present in the data. This is apparently supported by the scatter plot of the Stock Volume vs TMAX, with points encoded by month and PRCP factor.
+
+```{r}
+
+
+#NY_weathstock_scatter <- ggplot(stockWeather_rmNA, aes(x = TMAX, y #=Volume_norm)) + 
+#  geom_point(aes(colour = PRCP_factor)) +
+#  labs(x = "Temperature", y = "Total Daily DOW Trade Volume", 
+ #      title = "Weather Patterns for DOW Trade Volume")
+#NY_weathstock_scatter
+
+
+## Trying again with the 90's stock data.
+
+#NY_90s_weathstock_scatter <- ggplot(stockWeather_90s, aes(x = TMAX, y =Volume_norm)) + 
+#  geom_point(aes(colour = PRCP_factor)) +
+#labs(x = "Temperature (ºF)", y = "Normalized Daily DOW Trade Volume (M)", 
+ #      title = "Weather Patterns for DOW Trade Volume in the 1990s")
+#NY_90s_weathstock_scatter
+
+NY_90s_weathstock_scatter2 <- stockWeather_90s %>% 
+  sample_frac(0.3) %>%
+  ggplot(aes(x = TMAX, y =Volume_norm)) + 
+  geom_point(aes(colour = month, shape = PRCP_factor)) +
+  labs(x = "Temperature (ºF)", y = "Normalized Daily DOW Trade Volume (M)",
+       title = "Weather Patterns for DOW Trade Volume in the 1990s") + 
+  guides(colour = guide_legend(nrow = 6))
+NY_90s_weathstock_scatter2
+
+```
+With no noticeable correlations between weather and stock volume, a linear model was created to highlight potential hidden relationships that may exist in the data.
+
+```{r}
+
+
+#stock_LM <- lm(Volume_norm ~ TMAX + PRCP_factor + year + month,
+ #              stockWeather_rmNA)
+#summary(stock_LM)
+
+
+stock_LM_90s <- lm(Volume_norm ~ TMAX + PRCP_factor + year + month,
+                   stockWeather_90s)
+summary(stock_LM_90s)
+xkabledply(stock_LM_90s, title = paste("Linear Model: ",                                           format(formula(stock_LM_90s) )))
+
+
+```
+
+The Linear Model incorporates all the Stock data from 1988-2000 had a statistically significant TMAX, year, and some of the months. The relationship between TMAX and trade volume is misleading because of the difference in scale between the variables. The trade volume is on the scale of millions so even though there is a statistically significant relationship, it is not a meaningful correlation. The relationship with TMAX is more likely related to the seasonality that is shown by the statistically significant months in the model as the warmer months more statistically significant. The overall model has an r-squared value of 0.641, but that is likely primarily driven by the year variable, as indicated by the strong correlation above.
+
+Overall, there were very weak relationships between stock trade volume and weather, notably TMAX. But this relationship is not strong enough to be predictive. There was also no statistically significant relationship between stock volume and precipitation.
+
+
+
+### COVID Data
+
+Looking at the effect of precipitation and temperature on the number of positive COVID cases. Using the "CASE_COUNT" parameter for the NYC Covid dataset. CASE_COUNT represents the count of patients tested who were confirmed to be COVID-19 cases on date_of_interest
+
+``` {r}
+options(scientific=T, digits = 3) 
+NYcovid <- tibble(read.csv("./data/COVID-19_Daily_Counts_of_Cases__Hospitalizations__and_Deaths.csv"))
+
+NYcovid <- select(NYcovid, 1:3)
+
+head(NYcovid)
+colnames(NYcovid)[1] <- "DATE"
+
+NYcovid$DATE <- as.Date(NYcovid$DATE, format = "%m/%d/%Y")
+NYcovid$day <- format(NYcovid$DATE, format="%d")
+NYcovid$month <- format(NYcovid$DATE, format="%m")
+NYcovid$year <- format(NYcovid$DATE, format="%Y")
+
+head(NYcovid)
+summary(NYcovid)
+
+
+```
+Next, Looked at normality of the COVID count data. The counts were extremely skewed to the right. First removed multiple rounds of outliers using the outlierKD2 funciton. After removing all outliers, the data was still skewed right but less extreme. Used a square-root transform to normalize the data.
+```{r}
+
+
+
+covid_plot <- plot(NYcovid$DATE, NYcovid$CASE_COUNT)
+covid_boxplot <- boxplot(NYcovid$CASE_COUNT)
+
+NYcovid_rmOuts <- outlierKD2(NYcovid, CASE_COUNT, rm=TRUE, boxplt=TRUE, histogram=TRUE, qqplt=TRUE)
+
+NYcovid_rmOuts2 <- outlierKD2(NYcovid_rmOuts, CASE_COUNT, rm=TRUE, boxplt=TRUE, histogram=TRUE, qqplt=TRUE)
+
+NYcovid_rmOuts3 <- outlierKD2(NYcovid_rmOuts2, CASE_COUNT, rm=TRUE, boxplt=TRUE, histogram=TRUE, qqplt=TRUE)
+
+NYcovid_rmOuts4 <- outlierKD2(NYcovid_rmOuts3, CASE_COUNT, rm=TRUE, boxplt=TRUE, histogram=TRUE, qqplt=TRUE)
+
+
+covid_plot <- plot(NYcovid_rmOuts4$DATE, NYcovid_rmOuts4$CASE_COUNT)
+tail(NYcovid_rmOuts3)
+
+
+sqrt_count <- sqrt(NYcovid_rmOuts3$CASE_COUNT)
+#hist(sqrt_count)
+
+NYcovid_final <- cbind(NYcovid_rmOuts4, sqrt_count)
+head(NYcovid_final)
+
+```
+Add the Covid data to the NY Weather Data, subsetting the weather data to after 2/29/2022
+
+```{r}
+
+covWeather <- subset(NYweath_prcpFact, DATE >= ("2020-02-29"))
+NYcovid_finaldates <- subset(NYcovid_final, DATE <= "2022-09-26")
+tail(covWeather)
+NYweath_prcpCov <- cbind(covWeather, NYcovid_finaldates$CASE_COUNT,
+                         NYcovid_finaldates$sqrt_count)
+colnames(NYweath_prcpCov)[12:13] <- c("CASE_COUNT", "sqrt_count")
+
+covCount_prcp_plot <- plot(NYweath_prcpCov$sqrt_count, sqrt(NYweath_prcpCov$PRCP))
+
+NYweath_cov_final <- NYweath_prcpCov[,c(1:5, 8, 10:13)]
+
+```
+
+Plot of COV case count vs precipitation. no apparent relationship, however, more interested in effect of precip not so much about the correlation in prcp 
+
+
+T-test comparing Covid positive counts on days with precipitation vs days without prcp.
+
+```{r}
+
+cov_prcp1 <- subset(NYweath_cov_final, PRCP_factor == 1)
+cov_prcp0 <- subset(NYweath_cov_final, PRCP_factor == 0)
+
+
+
+cov_count_ttest <- t.test(cov_prcp0$sqrt_count, cov_prcp1$sqrt_count)
+cov_count_ttest
+
+cov_count_bplot <- ggplot()+
+  geom_boxplot(data = NYweath_cov_final,
+               aes(y = sqrt_count, x = PRCP_factor)) +
+  labs(title = "COVID Positive Counts")
+
+cov_count_bplot
+
+## Repeating this EDA looking only at Covid cases from 2021+. 
+cov_2021 <- subset(NYweath_cov_final, year >= 2021)
+
+cov_2021count_bplot <- ggplot()+
+  geom_boxplot(data = cov_2021, aes(y = sqrt_count, x = PRCP_factor)) +
+  labs(title = "2021 COVID Positive Counts")
+cov_2021count_bplot
+
+cov_2021prcp1 <- subset(cov_2021, PRCP_factor == 1)
+cov_2021prcp0 <- subset(cov_2021, PRCP_factor == 0)
+
+cov_2021count_ttest <- t.test(cov_2021prcp0$sqrt_count, cov_2021prcp1$sqrt_count)
+cov_2021count_ttest
+
+```
+
+No significant difference in the mean Covid case counts on days with precipitation or without. However, there was a greater difference in the means when only incorporating Covid from 2021+. 
+
+
+```{r}
+
+covWeath_final_scatter <- ggplot(NYweath_cov_final, 
+                                 aes(x = TMAX, 
+                                     y =sqrt_count,
+                                     )) + 
+  geom_point(aes(colour = month, shape = PRCP_factor)) +
+  labs(x = "Temperature", 
+       y = "Square Root of Total Daily DOW Trade Volume", 
+       title = "Weather Patterns for Covid Case Counts")
+covWeath_final_scatter
+
+```
+
+Will now build a linear model that incorporates temperature, precipitation, and Month to predict Covid counts. 
+
+```{r}
+library(psych)
+
+
+pairs.panels(NYweath_cov_final[4:10], 
+             method = "pearson", # correlation method
+             hist.col = "#00AFBB",
+             density = FALSE,  # show density plots
+             ellipses = FALSE # show correlation ellipses
+             )
+
+
+cov_weathLM <- lm(sqrt_count ~ TMAX + PRCP_factor + year,
+                  data = NYweath_cov_final)
+summary(cov_weathLM)
+
+cov_weathLM_month <- lm(sqrt_count ~ TMAX + PRCP_factor + year + month,
+                  data = NYweath_cov_final)
+summary(cov_weathLM_month)
+
+
+
+cov2021_weathLM <- lm(CASE_COUNT ~ TMAX + PRCP_factor + year + month,
+                  data = cov_2021)
+summary(cov2021_weathLM)
+
+```
+
+The linear model that only incorporates TMAX, PRCP_factor, and year has statistically significant coefficients for TMAX and year. This indicates the model predicts that the sqrt of covid counts decreases by 0.3 for degree F increase in TMAX.
+
+However, when we account for month, we lose the significance in the TMAX variable. This indicates that the covid cases are more effected by the seasonal changes rather than Temperature.
+
+
+Let's try to graph this! That did not work!
+
+```{r}
+
+#covLM_plot <- covWeath_final_scatter + 
+ # geom_smooth(method = lm, se = FALSE, fullrange = TRUE,
+              #aes(colour = PRCP_factor))
+#covLM_plot
+  
+#ggplt
+  
+# Plotting multiple Regression Lines
+#ggplt+geom_smooth(method=lm,se=FALSE,fullrange=TRUE,
+   #               aes(color=Tree))
+
+#covLM_plot
+
+
+
+```
+
+
+
+
+### LR to predict Precipitation!
+
+Let's start by ingesting the Air Quality to add into this prediction in place of COVID.
+
+```{r load csvs}
+#DailyAQ_00_22 <- data.frame(read.csv("data/daily-AQ-NY-00-20.csv"))
+#DailyAQ_00_22 <- DailyAQ_00_22[c('Date', 'Daily.Mean.PM2.5.Concentration', #'DAILY_AQI_VALUE')]
+#colnames(DailyAQ_00_22) <- c('DATE', 'PM2.5', 'AQI')
+#str(DailyAQ_00_22)
+#xkablesummary(DailyAQ_00_22)
+#xkabledplyhead(DailyAQ_00_22)
+```
+
+Now let's build a master dataframe that incorporates Date, Year, Month, TMAX, PRCP, PRCP_Factor, 
+Crime Count, 
+DOW Volume, 
+PM2.5, and AQI.
+
+```{r}
+
+# FORMAT AQ Data and subset dates
+#AQ_forLogit <- DailyAQ_00_22
+#AQ_forLogit$DATE <- as.Date(AQ_forLogit$DATE, format = "%m/%d/%y")
+#AQ_forLogit$day <- format(AQ_forLogit$DATE, format="%d")
+#AQ_forLogit$month <- format(AQ_forLogit$DATE, format="%m")
+#AQ_forLogit$year <- format(AQ_forLogit$DATE, format="%Y")
+#AQ_forLogit$year <- as.numeric(AQ_forLogit$year)
+
+#AQ_forLogit2 <- AQ_forLogit %>% 
+ # complete(DATE = seq.Date(min(DATE), max(DATE), by="day"))
+
+#AQ_masterDates <- subset(AQ_forLogit2, year >= 2006 & year < 2022)
+
+
+stock_masterDates <- subset(NYstock_final,Date >= "2006-01-01" &
+                              Date <= "2021-12-31")
+
+crime_masterDates <- NYcrime_count
+
+weath_masterDates <- subset(NYweath_prcpFact, year >= 2006 & year < 2022) 
+
+
+master_log <- cbind(weath_masterDates,
+                    crime_masterDates$NUM_ARREST,
+                    stock_masterDates$Vol.)
+colnames(master_log)[12:13] <- c('NUM_ARREST', 'Volume')
+
+head(master_log)
+
+
+```
+
+```{r}
+
+master_logFinal <- subset(master_log, !is.na(Volume))
+master_logFinal$Volume_norm <- sqrt(master_logFinal$Volume)
+
+```
+
+Now let's build the LR:
+
+```{r}
+
+prcp_logit <- glm(PRCP_factor ~ TMAX + NUM_ARREST +
+                    Volume_norm + year + month,
+                  data = master_logFinal,
+                  family = binomial(link = "logit"))
+
+summary(prcp_logit)
+
+```
+
+Let's assess the LR!
+
+```{r}
+library(ModelMetrics)
+prcpLR_cm <- confusionMatrix(actual = prcp_logit$y, 
+                  predicted = prcp_logit$fitted.values)
+prcpLR_cm
+
+prcpLR_acc <- (prcpLR_cm[2,2] + prcpLR_cm[1,1])/(sum(prcpLR_cm))
+prcpLR_prec <- (prcpLR_cm[2,2])/(prcpLR_cm[2,2]+prcpLR_cm[1,2])
+prcpLR_rec <- (prcpLR_cm[2,2])/(prcpLR_cm[2,2]+prcpLR_cm[2,1])
+prcpLR_spec <- (prcpLR_cm[1,1])/(prcpLR_cm[1,1]+prcpLR_cm[1,2])
+
+library(pROC)
+
+master_logFinal$prob=predict(prcp_logit, type = c("response"))
+prcp_roc <- roc(PRCP_factor ~ prob, data = master_logFinal)
+prcp_auc <- auc(prcp_roc)
+prcp_auc
+plot(prcp_roc)
+
+library(pscl)
+prcp_pr2 <- pR2(prcp_logit)
+prcp_pr2
+
+```
+
+This is NOT a good logistic regression!!!
+
+## Summary of Key Findings
+
+We have statistically significant correlations on models using weather, air quality, and human activity data from NYC, but none of our models demonstrate high predictive potential.  
+
+Challenges with data – data were not ideal for our initial hypotheses– cannot reject or accept. Would need better data!  
+
+Cannot model seasonality with linear regressions. Potentially need to use seasonality-adjusted time-series models for better outcomes.  
+
+What data would enable us to answer the question if we had more time?
+
+## Conclusions
+- What were the limitations to your methods
+- Data availability issues. Not having all data we wanted to explore.
+- Brief model evaluation and comparison
+
+#### Tejas' conclusion
+Our hypothesis that a correlation would exist between daily weather and air quality variables was ultimately proven wrong. We observed trends of declining AQI over time, but the explanation of variance from our model results was not strong enough to deem the model a good fit. Similarly, a linear model predicting AQI based on the categorical month variable, along with TMAX, also resulted in a poor fit.  
+
+We determined that the relationship between air quality and global warming is difficult to model using linear techniques due to seasonal trends in the variables. Our attempt to model the effect of these trends using kNN also resulted in a poor-fitted model. Ultimately, a different type of model would be required to address the seasonal component.  
+
+Also, changes in climate are slow to take effect. A increase in emissions does not necessarily lead to increases in temperature on the same time scale. All these effects would need to be taken into consideration for an effective analysis.
+
+## References (APA Style)
+
+Lindsey, R.; Dahlman, L. (2022, June 28). _Climate change: Global temperature._ Climate.gov. Retrieved December 11, 2022, from https://www.climate.gov/news-features/understanding-climate/climate-change-global-temperature  
+
+United States Environmental Protection Agency, _Air Data Basic Information._, retrieved December 8, 2022, from, www.epa.gov/outdoor-air-quality-data/air-data-basic-information.
+
+NYC Environment and Health Data Portal, _Tracking changes in New York City's sources of air pollution._, published online April 12, 2021, retrieved December 6, 2022, from https://a816-dohbesp.nyc.gov/IndicatorPublic/beta/data-stories/aq-cooking/ 
+
+Horanont, T., Phithakkitnukoon, S., Leong, T. W., Sekimoto, Y., & Shibasaki, R. (2013). Weather effects on the patterns of people's everyday activities: a study using GPS traces of mobile phone users. PloS one, 8(12), e81153. https://doi.org/10.1371/journal.pone.0081153
+
+
