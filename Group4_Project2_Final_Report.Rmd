@@ -549,6 +549,16 @@ knnROC
 A multiclass ROC evaluation on the test labels yields an AUC value of 0.65, which is higher than expected based on the model's accuracy value. Still, this is not a significant result based on the AUC threshold of 0.8.  
 
 # Local weather and local human social and economic activity
+The last question our team set out to address if a relationship exists between local weather and local human social and economic activity. The relationship has been been explored in the past with evidence suggesting weather has effects on an individuals mood, thermal comfort level, social interaction and can influence traffic, travel, public health, crime rates, and even stock prices (Horanont, 2013). Our team looked to expand on this prior work by making these observations at the local level of New York City. We decided to look specifically at the relationship between local weather and crime rates,stock prices, and public health. 
+
+Two data sets were used to explore weather's impact on crime rates. First we looked at NYC shootings with 5,409 observations and then all arrests with 5,844 observations. Both of these data sets were available through NYC's Open Data repository and had data from 2006-2021.
+
+To interrogate weather's impact on public health, our team looked at COVID-19 case counts in New York City. The data was available from New York City's Open Data repository. The data set consisted of 991 observations between February 29th, 2020 and present day.
+
+
+For stock market data, we looked at the total daily trade for the DOW Jones Industrial Index. This data contained 10,822 observations dating back to December 25, 1979, however trade volume has was only available since 1988.
+
+To draw conclusions about weather's relationship with human activity, we use TMAX and a binary factor of total precipitation as the predictor weather variables. We incorporated month and year into these relationships as we saw seasonality effects and changes over time in our previous effort.
 
 ```{r}
 # correlation between shooting & weather data from Emily
@@ -633,7 +643,8 @@ NYweath_prcpFact$PRCP_factor <- as.factor(NYweath_prcpFact$PRCP_factor)
 
 ### Crime data
 
-Initial import of the data. Due to the size of the data, I imported it once, aggregated the data into a new data frame that only includes date and arrest count. This was exported and saved in the Git. The code below imports directly from that aggregated dataset.
+After looking at the relationship between reported shootings in NYC and local weather, we expanded our comparison to all arrests, not just shootings. This data was not previously analyzed by our group so we did some basic EDA to determine the distribution of the new data and identify correlations that exist.
+
 ```{r}
 
 #NYcrime <- data.frame(read.csv("/Users/christopherwasher/Documents/DATS6101/NYPD_Arrests_Data__Historic_.csv"))
@@ -652,22 +663,29 @@ NYcrime_count$ARREST_DATE <- as.Date(NYcrime_count$ARREST_DATE, format = "%Y-%m-
 colnames(NYcrime_count)[2] <- "ARREST_DATE"
 
 head(NYcrime_count)
+summary(NYcrime_count)
 
 ```
 
 
-Now will do summary statistics and basic EDA on the Crime Count data
-
 ```{r}
 
 
-crime_plot <- plot(NYcrime_count$ARREST_DATE, NYcrime_count$NUM_ARREST)
-crime_boxplot <- boxplot(NYcrime_count$NUM_ARREST)
+#crime_plot <- plot(NYcrime_count$ARREST_DATE, NYcrime_count$NUM_ARREST)
+#crime_boxplot <- boxplot(NYcrime_count$NUM_ARREST)
+crime_hist <- ggplot(NYcrime_count, aes(x = NYcrime_count$NUM_ARREST)) + 
+  geom_histogram(fill = "cornflowerblue") + 
+  labs(x = "Number Daily Arrests",
+       title = "Distribution of Daily NYC Arrest Counts")
+crime_hist
 
 ```
-Add the Crime data to the NY Weather Data, subsetting the weather data to after 1/1/2022
 
-```{r}
+The histogram shows the distribution of the number of daily arrests in NYC since 2006. There appears to be a slight bimodal distribution to the number of daily arrests. However, because of the large sample size, we will consider this a normal distribution.
+
+We incorporated the crime data with the weather data to look for any additional correlations. We plotted arrest counts as the independent variable and temperature as the independent variable, with points coded by precipitation and month. This plot is below. There are no initial patterns that can be discerned by this chart. 
+
+```{r, results='markup'}
 
 
 crimeWeather <- subset(NYweath_prcpFact, year >= 2006 & year < 2022)
@@ -680,47 +698,82 @@ colnames(NYweath_crime)[12] <- c("NUM_ARREST")
 #NYweath_crime_plot <- plot(sqrt(NYweath_crime$PRCP), NYweath_crime$NUM_ARREST)
 #boxplot((NYweath_crime$TOT_PRCP))
 
-NY_weathcrime_ggplot <- ggplot(NYweath_crime,
-                               aes(x = TMAX, y =NUM_ARREST)) + 
-  geom_point(aes(colour = PRCP_factor), alpha = 0.5) +
-  labs(x = "Temperature (ºF)", y = "Number of Daily Arrests", 
-       title = "Weather Patterns for NYC Crime")
-NY_weathcrime_ggplot
+#NY_weathcrime_ggplot <- ggplot(NYweath_crime,
+ #                              aes(x = TMAX, y =NUM_ARREST)) + 
+  #geom_point(aes(colour = PRCP_factor), alpha = 0.5) +
+  #labs(x = "Temperature (ºF)", y = "Number of Daily Arrests", 
+  #     title = "Weather Patterns for NYC Crime")
+#NY_weathcrime_ggplot
 
 NY_weathcrime_ggplot2 <- NYweath_crime %>% 
   sample_frac(0.25) %>%
   ggplot(aes(x = TMAX, y =NUM_ARREST)) + 
   geom_point(aes(shape = PRCP_factor, colour = month)) +
   labs(x = "Temperature (ºF)", y = "Number of Daily Arrests", 
-       title = "Weather Patterns for NYC Crime")
+       title = "Weather Patterns for NYC Crime") + 
+  guides(colour = guide_legend(nrow = 6))
 NY_weathcrime_ggplot2
 
-
 ```
-Initially made a boxplot of precipitation to observe the distribution.. It is extremely skewed. However, because I'm only interested in determining if precipitation has an effect, will build a linear model using PRCP as a Factor.
+
 
 
 ```{r}
 
-crimeWeath_lm <- lm(NUM_ARREST ~ TMAX + PRCP_factor + year,  
-                    data = NYweath_crime)
-crimeWeathMonth_lm <- lm(NUM_ARREST ~ (TMAX + PRCP_factor + year + month), 
+crime_prcp1 <- subset(NYweath_crime, PRCP_factor == 1)
+crime_prcp0 <- subset(NYweath_crime, PRCP_factor == 0)
+
+crime_count_ttest <- t.test(crime_prcp0$NUM_ARREST, crime_prcp1$NUM_ARREST)
+crime_count_ttest
+
+
+```
+
+Before looking at the correlation between all variables, we performed a t-test to determine if there was a statistical difference in the number of arrests on days with precipitation and days without precipitation. The t-test found a statistically significant different mean number of arrests on days with and without precipitation, with a higher number of arrests on days without precipitation. 
+
+We also looked at the a correlation plot for weather variables and arrests. The strongest correlation exists between number of arrests and year, followed by month. Temperature appears to have no correlation with crime while precipitation has a very minimal negative correlation with crime. However, because we know temperature and precipitation have a seasonal component to them, and the t-test showed precipitation had some effect on arrests, these correlations might not tell the whole story. We decided to create a linear regression model that incorporates all of these variables.
+
+```{r, results = 'markup'}
+crime_cor_data <- NYweath_crime
+crime_cor_data$NUM_ARREST <- as.numeric(crime_cor_data$NUM_ARREST)
+crime_cor_data <- cbind(crime_cor_data[3:6], crime_cor_data[8:12])
+
+pairs.panels(crime_cor_data, 
+             method = "pearson", # correlation method
+             hist.col = "#00AFBB",
+             density = FALSE,  # show density plots
+             ellipses = FALSE, # show correlation ellipses
+             )
+
+```
+
+
+```{r}
+
+#crimeWeath_lm <- lm(NUM_ARREST ~ TMAX + PRCP_factor + year,  
+                 #   data = NYweath_crime)
+crimeWeathMonth_lm <- lm(NUM_ARREST ~ TMAX + PRCP_factor + year + month, 
                     data = NYweath_crime)
 #crimeWeathTMIN_lm <- lm(NUM_ARREST ~ (TMIN + PRCP_factor), 
 #                    data = NYweath_crime)
 
-summary(crimeWeathMonth_lm)
+#summary(crimeWeathMonth_lm)
+xkabledply(crimeWeathMonth_lm, title = paste("Linear Model: ",                                           format(formula(crimeWeathMonth_lm) )))
 
 ```
 
-The Linear model of Arrest Numbers as a result of temperature and precipitation. The Coefficients are significant but the R^2 is 0. This indicates there is a statistically significant relationship between Arrests and TMAX and Precipitation but these variables do not explain any of the variability in the data. Increasing TMAX correlated with an increase in Arrests. And PRCP present is associated with a decreased number of arrests.
+The linear model of arrests as predicted by of temperature, precipitation, year, and month regressors. The model has an overall R^2 value 0.427 which is a weak overall fit for the data, but does indicate that these regressors explain some of the variability in the data. The coefficients for TMAX, Precipitation Factor, year, and most months are statistically significant.
+
+There is a weak positive relationship between arrests and TMAX, for every degree increase in temperature there are about 2.34 more arrests.  Precipitation had a slightly more impactful effect on the number of daily arrests. The linear model shows a decrease of 46.13 arrests on days with precipitation, confirming what we saw in our t-test. The model also shows a decreasing number of arrests over time and that most months have a statistically significant relationship with the number of daily arrests.
+
+Overall, we can see that there are statistically significant relationships between weather and crime in NYC. This indicates that local weather conditions have some effect on local human activity but we still want to explore additional variables.
 
 
 ### Stock Market Data
 
-Import the stock market data and convert the date column to a 'Date' data type. Also pulled out the 'day', 'month', and 'year' columns to help in analysis.
+Next, we looked at the effect weather has on the stock market, specifically by looking at the trade volume of the Dow Jones Industrial index in the 1990s. We looked at this time period in particular due to the transition to digital stock trading with the rise of computers. We hypothesized that if weather had an effect on trade volume, the effect would be greatest for this time given the data available.
 
-One last note, will need to fill in the missing date and populated the other columns with 'NAs'. This will enable us to combine the stocks data with the weather data.
+To start investigating this relationship, initial EDA was performed. Again, we looked at the distribution of the data and correlations that exist between the variables.
 
 ``` {r}
 
@@ -767,10 +820,6 @@ options(scientific=T, digits = 3)
 ```
 
 
-
-Really only care about the volume of data. will remove all other columns and only work with Date + Vol. Will combine that witht he weather data for further analysis.
-
-
 ```{r}
 
 NYstock_final <- NYstock2[,c("Date", "Vol.")]
@@ -780,37 +829,62 @@ weather_stockDates <- subset(NYweath_prcpFact, DATE >= "1979-12-25")
 stockWeather <- cbind(weather_stockDates, NYstock_final)
 colnames(stockWeather)[13] <- c("Volume")
 
-
 ```
 
-Now will do EDA on the the volume data to build a linear regression model. First will look at normality and look for any correlations.
 
-
-```{r}
+```{r, results='markup'}
 stockWeather_rmNA <- subset(stockWeather, !is.na(Volume))
 stock_hist <- hist(stockWeather_rmNA$Volume)
+stockWeather_rmNA_gghist <- ggplot(stockWeather_rmNA, 
+                                   aes(x = stockWeather_rmNA$Volume)) + 
+  geom_histogram(fill = "cornflowerblue") + 
+  labs(x = "Total Daily Trade Volume (M) ",
+       title = "Distribution of Daily DOW Trade Volume")
+stockWeather_rmNA_gghist
 
 ```
 
-Histogram shows the data is right skewed. Will use sqrt of the volume to normalize.
+The histogram of the daily DOW trade volume shows the data is right skewed. We plan to use this data in a linear model so we will use a square root normalization of the volume, and reexamine the distribution.
 
-```{r}
+```{r, results='markup'}
 
 stockWeather_rmNA$Volume_norm <- sqrt(stockWeather_rmNA$Volume)
 stockWeather_rmNA <- subset(stockWeather_rmNA, select = -c(Date))
 stockWeather_90s <- subset(stockWeather_rmNA, year >= 1988 & year <= 1999)
 
-hist(stockWeather_rmNA$Volume_norm)
-boxplot(stockWeather_rmNA$Volume_norm)
+#hist(stockWeather_90s$Volume_norm)
+#boxplot(stockWeather_rmNA$Volume_norm)
+stockWeather90Norm_rmNA_gghist <- ggplot(stockWeather_90s, 
+                            aes(x = stockWeather_90s$Volume_norm)) +
+  geom_histogram(fill = "cornflowerblue") + 
+  labs(x = "Normalized Daily Trade Volume (M) ",
+       title = "Distribution of Normalized DOW Trade Volume")
+stockWeather90Norm_rmNA_gghist
 
 ```
 
-The distribution of sqrt Volume is considerably more normal. Will now look at correlations with Weather data. The boxplot shows there are no outliers after normalizing the data.
+The distribution of sqrt Volume is considerably more normal, although there still appears to be a right-skew to the distribution. Given the number of observations, we will again assume this is a normal enough distribution for further analysis.
 
 
 ```{r}
 
-pairs.panels(stockWeather_rmNA[c("TMAX", "TOT_PRCP","PRCP_factor",
+stock_prcp1 <- subset(stockWeather_90s, PRCP_factor == 1)
+stock_prcp0 <- subset(stockWeather_90s, PRCP_factor == 0)
+
+stock_count_ttest <- t.test(stock_prcp0$Volume_norm,
+                            stock_prcp1$Volume_norm)
+stock_count_ttest
+
+
+```
+
+A t-test was performed to compare the mean normalized stock trade volume on days with and without precipitation. The t-test did not reject the null hypothesis as the values are nearly identical regardless of precipitation. We then wanted to look at correlations between all the variables.
+
+
+```{r, results='markup'}
+
+pairs.panels(stockWeather_90s[c("year", "month", "TMAX",
+                                "TOT_PRCP","PRCP_factor",
                                  "Volume","Volume_norm")], 
              method = "pearson", # correlation method
              hist.col = "#00AFBB",
@@ -820,59 +894,58 @@ pairs.panels(stockWeather_rmNA[c("TMAX", "TOT_PRCP","PRCP_factor",
 
 ```
 
-There are no strong correlations present in the data. Will next look at a scatter plot of the Stock Volume vs TMAX, categorized by days with PRCP.
+The only strong correlation that exists in this data set is the relationship between year and the stock trade volume. There are no other strong correlations present in the data. This is apparently supported by the scatter plot of the Stock Volume vs TMAX, with points encoded by month and PRCP factor.
 
 ```{r}
 
 
-NY_weathstock_scatter <- ggplot(stockWeather_rmNA, aes(x = TMAX, y =Volume_norm)) + 
-  geom_point(aes(colour = PRCP_factor)) +
-  labs(x = "Temperature", y = "Total Daily DOW Trade Volume", 
-       title = "Weather Patterns for DOW Trade Volume")
-NY_weathstock_scatter
+#NY_weathstock_scatter <- ggplot(stockWeather_rmNA, aes(x = TMAX, y #=Volume_norm)) + 
+#  geom_point(aes(colour = PRCP_factor)) +
+#  labs(x = "Temperature", y = "Total Daily DOW Trade Volume", 
+ #      title = "Weather Patterns for DOW Trade Volume")
+#NY_weathstock_scatter
 
 
 ## Trying again with the 90's stock data.
 
-NY_90s_weathstock_scatter <- ggplot(stockWeather_90s, aes(x = TMAX, y =Volume_norm)) + 
-  geom_point(aes(colour = PRCP_factor)) +
-  labs(x = "Temperature (ºF)", y = "Normalized Daily DOW Trade Volume (M)", 
-       title = "Weather Patterns for DOW Trade Volume in the 1990s")
-NY_90s_weathstock_scatter
+#NY_90s_weathstock_scatter <- ggplot(stockWeather_90s, aes(x = TMAX, y =Volume_norm)) + 
+#  geom_point(aes(colour = PRCP_factor)) +
+#labs(x = "Temperature (ºF)", y = "Normalized Daily DOW Trade Volume (M)", 
+ #      title = "Weather Patterns for DOW Trade Volume in the 1990s")
+#NY_90s_weathstock_scatter
 
 NY_90s_weathstock_scatter2 <- stockWeather_90s %>% 
   sample_frac(0.3) %>%
   ggplot(aes(x = TMAX, y =Volume_norm)) + 
   geom_point(aes(colour = month, shape = PRCP_factor)) +
-  labs(x = "Temperature (ºF)", y = "Normalized Daily DOW Trade Volume (M)", 
-       title = "Weather Patterns for DOW Trade Volume in the 1990s")
+  labs(x = "Temperature (ºF)", y = "Normalized Daily DOW Trade Volume (M)",
+       title = "Weather Patterns for DOW Trade Volume in the 1990s") + 
+  guides(colour = guide_legend(nrow = 6))
 NY_90s_weathstock_scatter2
 
 ```
-
-
-
+With no noticeable correlations between weather and stock volume, a linear model was created to highlight potential hidden relationships that may exist in the data.
 
 ```{r}
 
 
-stock_LM <- lm(Volume_norm ~ TMAX + PRCP_factor + year + month,
-               stockWeather_rmNA)
-summary(stock_LM)
+#stock_LM <- lm(Volume_norm ~ TMAX + PRCP_factor + year + month,
+ #              stockWeather_rmNA)
+#summary(stock_LM)
 
 
 stock_LM_90s <- lm(Volume_norm ~ TMAX + PRCP_factor + year + month,
                    stockWeather_90s)
 summary(stock_LM_90s)
-
+xkabledply(stock_LM_90s, title = paste("Linear Model: ",                                           format(formula(stock_LM_90s) )))
 
 
 ```
-The Linear Model that incorporates all the Stock data from 1988-present had a statistically significant TMAX, year, and some of the months.
 
-The stock data subset to the 90s generated a similar model. 
+The Linear Model incorporates all the Stock data from 1988-2000 had a statistically significant TMAX, year, and some of the months. The relationship between TMAX and trade volume is misleading because of the difference in scale between the variables. The trade volume is on the scale of millions so even though there is a statistically significant relationship, it is not a meaningful correlation. The relationship with TMAX is more likely related to the seasonality that is shown by the statistically significant months in the model as the warmer months more statistically significant. The overall model has an r-squared value of 0.641, but that is likely primarily driven by the year variable, as indicated by the strong correlation above.
 
-Find the confidence intervals of the coefficients.
+Overall, there were very weak relationships between stock trade volume and weather, notably TMAX. But this relationship is not strong enough to be predictive. There was also no statistically significant relationship between stock volume and precipitation.
+
 
 
 
@@ -1147,7 +1220,7 @@ library(pROC)
 
 master_logFinal$prob=predict(prcp_logit, type = c("response"))
 prcp_roc <- roc(PRCP_factor ~ prob, data = master_logFinal)
-prcp_auc <- auc(prcp_roc)
+prcp_auc <- pROC::auc(prcp_roc)
 prcp_auc
 plot(prcp_roc)
 
