@@ -677,9 +677,9 @@ crime_hist
 
 ```
 
-The histogram shows the distribution of the number of daily arrests in NYC since 2006. There appears to be a slight bimodal distribution to the number of daily arrests. However, because of the large sample size, we will consider this a normal distribution.
+The histogram shows the distribution of the number of daily arrests in NYC to be a slight bimodal distribution. However, because of the large sample size, we will consider this a normal distribution.
 
-We incorporated the crime data with the weather data to look for any additional correlations. We plotted arrest counts as the independent variable and temperature as the independent variable, with points coded by precipitation and month. This plot is below. There are no initial patterns that can be discerned by this chart. 
+We incorporated the crime data with the weather data to look for any additional correlations. We plotted arrest counts and temperature, with points coded by precipitation and month. This plot is below with no initial patterns that can be discerned by this chart. 
 
 ```{r, results='markup'}
 
@@ -725,7 +725,7 @@ crime_count_ttest
 
 ```
 
-Before looking at the correlation between all variables, we performed a t-test to determine if there was a statistical difference in the number of arrests on days with precipitation and days without precipitation. The t-test found a statistically significant different mean number of arrests on days with and without precipitation, with a higher number of arrests on days without precipitation. 
+We performed a t-test to determine if there was a statistical difference in the number of arrests on days with precipitation and days without precipitation. The t-test found a statistically significant higher number of arrests on days without precipitation. 
 
 We also looked at the a correlation plot for weather variables and arrests. The strongest correlation exists between number of arrests and year, followed by month. Temperature appears to have no correlation with crime while precipitation has a very minimal negative correlation with crime. However, because we know temperature and precipitation have a seasonal component to them, and the t-test showed precipitation had some effect on arrests, these correlations might not tell the whole story. We decided to create a linear regression model that incorporates all of these variables.
 
@@ -762,14 +762,12 @@ The linear model of arrests as predicted by of temperature, precipitation, year,
 
 There is a weak positive relationship between arrests and TMAX, for every degree increase in temperature there are about 2.34 more arrests.  Precipitation had a slightly more impactful effect on the number of daily arrests. The linear model shows a decrease of 46.13 arrests on days with precipitation, confirming what we saw in our t-test. The model also shows a decreasing number of arrests over time and that most months have a statistically significant relationship with the number of daily arrests.
 
-Overall, we can see that there are statistically significant relationships between weather and crime in NYC. This indicates that local weather conditions have some effect on local human activity but we still want to explore additional variables.
-
 
 ### Stock Market Data
 
 Next, we looked at the effect weather has on the stock market, specifically by looking at the trade volume of the Dow Jones Industrial index in the 1990s. We looked at this time period in particular due to the transition to digital stock trading with the rise of computers. We hypothesized that if weather had an effect on trade volume, the effect would be greatest for this time given the data available.
 
-To start investigating this relationship, initial EDA was performed. Again, we looked at the distribution of the data and correlations that exist between the variables.
+To start investigating this relationship, initial EDA was performed.
 
 ``` {r}
 
@@ -840,7 +838,7 @@ stockWeather_rmNA_gghist
 
 ```
 
-The histogram of the daily DOW trade volume shows the data is right skewed. We plan to use this data in a linear model so we will use a square root normalization of the volume, and reexamine the distribution.
+The histogram of the daily DOW trade volume shows the data is right skewed so we used a square root normalization of the volume, and reexamined the distribution.
 
 ```{r, results='markup'}
 
@@ -920,7 +918,8 @@ NY_90s_weathstock_scatter2 <- stockWeather_90s %>%
 NY_90s_weathstock_scatter2
 
 ```
-With no noticeable correlations between weather and stock volume, a linear model was created to highlight potential hidden relationships that may exist in the data.
+
+A linear model was created to highlight potential hidden relationships that may exist in the data.
 
 ```{r}
 
@@ -938,20 +937,16 @@ xkabledply(stock_LM_90s, title = paste("Linear Model: ",                        
 
 ```
 
-The Linear Model incorporates all the Stock data from 1988-2000 had a statistically significant TMAX, year, and some of the months. The relationship between TMAX and trade volume is misleading because of the difference in scale between the variables. The trade volume is on the scale of millions so even though there is a statistically significant relationship, it is not a meaningful correlation. The relationship with TMAX is more likely related to the seasonality that is shown by the statistically significant months in the model as the warmer months more statistically significant. The overall model has an r-squared value of 0.641, but that is likely primarily driven by the year variable, as indicated by the strong correlation above.
-
-Overall, there were very weak relationships between stock trade volume and weather, notably TMAX. But this relationship is not strong enough to be predictive. There was also no statistically significant relationship between stock volume and precipitation.
-
-
+The Linear Model incorporates all the Stock data from 1988-2000 had a statistically significant TMAX, year, and some of the months. The relationship between TMAX and trade volume is misleading because of the difference in scale between the variables. The trade volume is on the scale of millions so even though there is a statistically significant relationship, it is not a strong correlation. The relationship with TMAX is more likely related to the seasonality that is shown by the statistically significant months in the model as the warmer months more statistically significant. The overall model has an r-squared value of 0.641, but that is likely primarily driven by the year variable, as indicated by the strong correlation above.
 
 
 ### COVID Data
 
 The last human activity we wanted to explore was public health by looking at a relationship between weather and COVID-19 case counts. In our previous effort, we saw that COVID-19 lockdown had an effect on the temperature in NYC so here we are looking for weather's effect on the number of cases in the city. 
 
-To explore this relationship, we use NYC's Open Data to pull daily COVID-19 case counts dating back to February 29, 2020. One notable flaw with this data set was that case counts were tracked based on confirmation dates rather than test dates, which means the weather data does not always match up to the case number dates. We continued with the analysis with the assumption that same day tests would out number longer turnaround tests and relationships that exist would still be identifiable. 
+One notable flaw with the dataset used was that case counts were tracked based on confirmation dates rather than test dates, which means the weather data does not always match up to the case number dates. We continued with the analysis with the assumption that same day tests would out number longer turnaround tests and relationships that exist would still be identifiable. 
 
-This was new data for our team so we performed initial EDA followed by a linear model to observe relationship and predict COVID-19 case counts.
+This was new data for our team so we performed initial EDA followed by a linear model to observe relationship with weather and COVID-19 case counts.
 
 ``` {r}
 options(scientific=T, digits = 3) 
@@ -1013,7 +1008,7 @@ cov_final_hist
 
 ```
 
-We looked at normality of the COVID count data, saw counts were extremely skewed to the right and contained. After removing all outliers, the data was still skewed right but less extreme and we used a square-root transform to normalize the data.
+The COVID count data was extremely skewed right so outliers were removed and a square-root transform was used to normalize the data.
 
 
 ```{r}
@@ -1031,7 +1026,7 @@ NYweath_cov_final <- NYweath_prcpCov[,c(1:5, 8, 10:13)]
 
 ```
 
-A t-test comparing COVID-19 case counts on days with precipitation and days without precipitation was then performed. Similar to what was seen in the stock market t-test, there was not a statistically significant difference in the mean number of COVID-19 case counts on days with and without precipitation. Boxplots of the precipitation and no precipitation COVID case counts are below.
+A t-test comparing COVID-19 case counts on days with precipitation and days without precipitation was then performed. There was not a statistically significant difference in the mean number of COVID-19 case counts on days with and without precipitation. Boxplots of the precipitation and no precipitation COVID case counts are below.
 
 ```{r}
 
@@ -1071,6 +1066,7 @@ cov_2021count_ttest <- t.test(cov_2021prcp0$sqrt_count, cov_2021prcp1$sqrt_count
 cov_2021count_ttest
 
 ```
+
 Following the t-test, we wanted to look at the correlations of all the variables that can be included in a linear model.
 
 ```{r}
@@ -1127,10 +1123,7 @@ xkabledply(cov_weathLM_month, title = paste("Linear Model: ",                   
 
 ```
 
-The linear model predicting COVID-19 cases in New York City with weather, year, and month as regressors. The model has an Adjusted R-squared value of 0.347. This indicates the model is a weak fit but it does explain some of the variation in the number of cases. However, the model coefficients are not all significant. Both TMAX and precipitation factor are not statistically significant in this model. This indicates that they are not predictive of COVID Case counts. Instead, year and most months are statistically significant, which drives the fit and predictive ability of the model.
-
-Overall, this model indicates that weather, via TMAX and precipitation factor, do not have a relationship with the number of COVID-19 cases in NYC. However, the major assumption about COVID-19 testing dates and confirmation dates made when starting this analysis, likely had an effect on the results. This makes the relationship between COVID-19 case counts and weather a topic worth pursuing in future study.
-
+The linear model predicting COVID-19 cases in New York City with weather, year, and month as regressors. The model has an Adjusted R-squared value of 0.347. This indicates the model is a weak fit but it does explain some of the variation in the number of cases. However, the model coefficients are not all significant. Both TMAX and precipitation factor are not statistically significant in this model. Instead, year and most months are statistically significant, which drives the fit and predictive ability of the model.
 
 ## LR to predict Precipitation!
 
