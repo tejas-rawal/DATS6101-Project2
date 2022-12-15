@@ -1311,6 +1311,6 @@ United States Environmental Protection Agency (EPAb), _Learn About Heat Islands.
 
 Horanont, T., Phithakkitnukoon, S., Leong, T. W., Sekimoto, Y., & Shibasaki, R. (2013). _Weather effects on the patterns of people's everyday activities: a study using GPS traces of mobile phone users._ PloS one, 8(12), e81153. https://doi.org/10.1371/journal.pone.0081153
 
-https://www.climate.gov/news-features/understanding-climate/climate-change-global-temperature
+NOAA National Centers for Environmental Information, _Monthly Global Climate Report for Annual 2021_, published online January 2022, retrieved on December 15, 2022 from https://www.ncei.noaa.gov/access/monitoring/monthly-report/global/202113.
 
 
