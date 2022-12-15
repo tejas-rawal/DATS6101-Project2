@@ -682,7 +682,7 @@ summary(NYcrime_count)
 #crime_boxplot <- boxplot(NYcrime_count$NUM_ARREST)
 crime_hist <- ggplot(NYcrime_count, aes(x = NYcrime_count$NUM_ARREST)) + 
   geom_histogram(fill = "cornflowerblue") + 
-  labs(x = "Number Daily Arrests",
+  labs(x = "Number Daily Arrests", y = "Frequency",
        title = "Distribution of Daily NYC Arrest Counts")
 crime_hist
 
@@ -820,8 +820,8 @@ NYstock2$year <- format(NYstock2$Date, format="%Y")
 
 
 
-head(NYstock2)
-summary(NYstock2)
+#head(NYstock2)
+#summary(NYstock2)
 options(scientific=T, digits = 3) 
 
 ```
@@ -845,7 +845,7 @@ stock_hist <- hist(stockWeather_rmNA$Volume)
 stockWeather_rmNA_gghist <- ggplot(stockWeather_rmNA, 
                                    aes(x = stockWeather_rmNA$Volume)) + 
   geom_histogram(fill = "cornflowerblue") + 
-  labs(x = "Total Daily Trade Volume (M) ",
+  labs(x = "Total Daily Trade Volume (M) ", y = "Frequency", 
        title = "Distribution of Daily DOW Trade Volume")
 stockWeather_rmNA_gghist
 
@@ -864,7 +864,7 @@ stockWeather_90s <- subset(stockWeather_rmNA, year >= 1988 & year <= 1999)
 stockWeather90Norm_rmNA_gghist <- ggplot(stockWeather_90s, 
                             aes(x = stockWeather_90s$Volume_norm)) +
   geom_histogram(fill = "cornflowerblue") + 
-  labs(x = "Normalized Daily Trade Volume (M) ",
+  labs(x = "Normalized Daily Trade Volume (M) ", y= "Frequency",
        title = "Distribution of Normalized DOW Trade Volume")
 stockWeather90Norm_rmNA_gghist
 
@@ -901,7 +901,7 @@ pairs.panels(stockWeather_90s[c("year", "month", "TMAX",
 
 ```
 
-The only strong correlation that exists in this data set is the relationship between year and the stock trade volume. There are no other strong correlations present in the data. This is apparently supported by the scatter plot of the Stock Volume vs TMAX, with points encoded by month and PRCP factor.
+The only strong correlation that exists in this data set is the relationship between year and the stock trade volume. There are no other strong correlations present in the data. This appears to be supported by the scatter plot of the Stock Volume vs TMAX, with points encoded by month and PRCP factor.
 
 ```{r}
 
@@ -933,7 +933,7 @@ NY_90s_weathstock_scatter2
 ```
 With no noticeable correlations between weather and stock volume, a linear model was created to highlight potential hidden relationships that may exist in the data.
 
-```{r}
+```{r, results='markup'}
 
 
 #stock_LM <- lm(Volume_norm ~ TMAX + PRCP_factor + year + month,
@@ -943,7 +943,7 @@ With no noticeable correlations between weather and stock volume, a linear model
 
 stock_LM_90s <- lm(Volume_norm ~ TMAX + PRCP_factor + year + month,
                    stockWeather_90s)
-summary(stock_LM_90s)
+#summary(stock_LM_90s)
 xkabledply(stock_LM_90s, title = paste("Linear Model: ",                                           format(formula(stock_LM_90s) )))
 
 
@@ -957,7 +957,11 @@ Overall, there were very weak relationships between stock trade volume and weath
 
 ### COVID Data
 
-Looking at the effect of precipitation and temperature on the number of positive COVID cases. Using the "CASE_COUNT" parameter for the NYC Covid dataset. CASE_COUNT represents the count of patients tested who were confirmed to be COVID-19 cases on date_of_interest
+The last human activity we wanted to explore was public health by looking at a relationship between weather and COVID-19 case counts. In our previous effort, we saw that COVID-19 lockdown had an effect on the temperature in NYC so here we are looking for weather's effect on the number of cases in the city. 
+
+To explore this relationship, we use NYC's Open Data to pull daily COVID-19 case counts dating back to February 29, 2020. One notable flaw with this data set was that case counts were tracked based on confirmation dates rather than test dates, which means the weather data does not always match up to the case number dates. We continued with the analysis with the assumption that same day tests would out number longer turnaround tests and relationships that exist would still be identifiable. 
+
+This was new data for our team so we performed initial EDA followed by a linear model to observe relationship and predict COVID-19 case counts.
 
 ``` {r}
 options(scientific=T, digits = 3) 
@@ -976,12 +980,11 @@ NYcovid$year <- format(NYcovid$DATE, format="%Y")
 head(NYcovid)
 summary(NYcovid)
 
+hist(NYcovid$CASE_COUNT)
 
 ```
-Next, Looked at normality of the COVID count data. The counts were extremely skewed to the right. First removed multiple rounds of outliers using the outlierKD2 funciton. After removing all outliers, the data was still skewed right but less extreme. Used a square-root transform to normalize the data.
+
 ```{r}
-
-
 
 covid_plot <- plot(NYcovid$DATE, NYcovid$CASE_COUNT)
 covid_boxplot <- boxplot(NYcovid$CASE_COUNT)
@@ -1006,7 +1009,22 @@ NYcovid_final <- cbind(NYcovid_rmOuts4, sqrt_count)
 head(NYcovid_final)
 
 ```
-Add the Covid data to the NY Weather Data, subsetting the weather data to after 2/29/2022
+
+```{r, results='markup'}
+
+
+cov_final_hist <- ggplot(NYcovid_final, 
+                            aes(x = NYcovid_final$sqrt_count)) +
+  geom_histogram(fill = "cornflowerblue", ) + 
+  labs(x = "Normalized COVID Case Count ", y = "Frequency",
+       title = "Distribution of Normalized COVID Case Count")
+cov_final_hist
+
+
+```
+
+We looked at normality of the COVID count data, saw counts were extremely skewed to the right and contained. After removing all outliers, the data was still skewed right but less extreme and we used a square-root transform to normalize the data.
+
 
 ```{r}
 
@@ -1023,10 +1041,7 @@ NYweath_cov_final <- NYweath_prcpCov[,c(1:5, 8, 10:13)]
 
 ```
 
-Plot of COV case count vs precipitation. no apparent relationship, however, more interested in effect of precip not so much about the correlation in prcp 
-
-
-T-test comparing Covid positive counts on days with precipitation vs days without prcp.
+A t-test comparing COVID-19 case counts on days with precipitation and days without precipitation was then performed. Similar to what was seen in the stock market t-test, there was not a statistically significant difference in the mean number of COVID-19 case counts on days with and without precipitation. Boxplots of the precipitation and no precipitation COVID case counts are below.
 
 ```{r}
 
@@ -1037,13 +1052,19 @@ cov_prcp0 <- subset(NYweath_cov_final, PRCP_factor == 0)
 
 cov_count_ttest <- t.test(cov_prcp0$sqrt_count, cov_prcp1$sqrt_count)
 cov_count_ttest
+```
 
+```{r, results = 'markup'}
 cov_count_bplot <- ggplot()+
   geom_boxplot(data = NYweath_cov_final,
-               aes(y = sqrt_count, x = PRCP_factor)) +
+               aes(y = sqrt_count, x = PRCP_factor, fill = PRCP_factor)) +
   labs(title = "COVID Positive Counts")
 
 cov_count_bplot
+```
+
+```{r}
+
 
 ## Repeating this EDA looking only at Covid cases from 2021+. 
 cov_2021 <- subset(NYweath_cov_final, year >= 2021)
@@ -1060,25 +1081,7 @@ cov_2021count_ttest <- t.test(cov_2021prcp0$sqrt_count, cov_2021prcp1$sqrt_count
 cov_2021count_ttest
 
 ```
-
-No significant difference in the mean Covid case counts on days with precipitation or without. However, there was a greater difference in the means when only incorporating Covid from 2021+. 
-
-
-```{r}
-
-covWeath_final_scatter <- ggplot(NYweath_cov_final, 
-                                 aes(x = TMAX, 
-                                     y =sqrt_count,
-                                     )) + 
-  geom_point(aes(colour = month, shape = PRCP_factor)) +
-  labs(x = "Temperature", 
-       y = "Square Root of Total Daily DOW Trade Volume", 
-       title = "Weather Patterns for Covid Case Counts")
-covWeath_final_scatter
-
-```
-
-Will now build a linear model that incorporates temperature, precipitation, and Month to predict Covid counts. 
+Following the t-test, we wanted to look at the correlations of all the variables that can be included in a linear model.
 
 ```{r}
 library(psych)
@@ -1090,86 +1093,63 @@ pairs.panels(NYweath_cov_final[4:10],
              density = FALSE,  # show density plots
              ellipses = FALSE # show correlation ellipses
              )
+```
+
+The strongest correlation existed between year and the COVID-19 case counts, followed by a negative correlation between daily temperature and case counts. There was no correlation between precipitation and COVID case counts. 
+
+These variables were plotted in the scatter plot below to visualize the relationships prior to building the linear model.
 
 
-cov_weathLM <- lm(sqrt_count ~ TMAX + PRCP_factor + year,
-                  data = NYweath_cov_final)
-summary(cov_weathLM)
+```{r}
+
+covWeath_final_scatter <- ggplot(NYweath_cov_final, 
+                                 aes(x = TMAX, 
+                                     y =sqrt_count,
+                                     )) + 
+  geom_point(aes(colour = month, shape = PRCP_factor)) +
+  labs(x = "Temperature", 
+       y = "Normalized COVID-19 Case Counts", 
+       title = "Weather Patterns for Covid Case Counts") + 
+  guides(colour = guide_legend(nrow = 6))
+
+covWeath_final_scatter
+
+```
+Using this EDA, we built a linear model that predicts the normalized COVID-19 case counts using TMAX, precipitation as a factor, year, and month, as the regressors. Year and Month were included in the linear model because we have to account for seasonal changes in both weather and COVID-19.
+
+
+```{r, results='markup'}
+
+#cov_weathLM <- lm(sqrt_count ~ TMAX + PRCP_factor + year,
+ #                 data = NYweath_cov_final)
+#summary(cov_weathLM)
 
 cov_weathLM_month <- lm(sqrt_count ~ TMAX + PRCP_factor + year + month,
                   data = NYweath_cov_final)
 summary(cov_weathLM_month)
+xkabledply(cov_weathLM_month, title = paste("Linear Model: ",                                           format(formula(cov_weathLM_month) )))
 
 
 
-cov2021_weathLM <- lm(CASE_COUNT ~ TMAX + PRCP_factor + year + month,
-                  data = cov_2021)
-summary(cov2021_weathLM)
+#cov2021_weathLM <- lm(CASE_COUNT ~ TMAX + PRCP_factor + year + month,
+ #                 data = cov_2021)
+#summary(cov2021_weathLM)
 
 ```
 
-The linear model that only incorporates TMAX, PRCP_factor, and year has statistically significant coefficients for TMAX and year. This indicates the model predicts that the sqrt of covid counts decreases by 0.3 for degree F increase in TMAX.
+The linear model predicting COVID-19 cases in New York City with weather, year, and month as regressors. The model has an Adjusted R-squared value of 0.347. This indicates the model is a weak fit but it does explain some of the variation in the number of cases. However, the model coefficients are not all significant. Both TMAX and precipitation factor are not statistically significant in this model. This indicates that they are not predictive of COVID Case counts. Instead, year and most months are statistically significant, which drives the fit and predictive ability of the model.
 
-However, when we account for month, we lose the significance in the TMAX variable. This indicates that the covid cases are more effected by the seasonal changes rather than Temperature.
+Overall, this model indicates that weather, via TMAX and precipitation factor, do not have a relationship with the number of COVID-19 cases in NYC. However, the major assumption about COVID-19 testing dates and confirmation dates made when starting this analysis, likely had an effect on the results. This makes the relationship between COVID-19 case counts and weather a topic worth pursuing in future study.
 
 
-Let's try to graph this! That did not work!
+## LR to predict Precipitation!
+
+The last analysis performed does not directly address our original questions, but our team looked to use the relationships between human activity and weather to predict precipitation as a binary factor.
+
+Our team built a logistic regression to predict precipitation using TMAX, year, month, and human activity via number of arrests and stock volume. These two variables were chosen for human activity because the previous linear models show they had some statistical significant relationship to weather. We wanted to explore whether they would be predictive of precipitation if combined into one model.
+
 
 ```{r}
-
-#covLM_plot <- covWeath_final_scatter + 
- # geom_smooth(method = lm, se = FALSE, fullrange = TRUE,
-              #aes(colour = PRCP_factor))
-#covLM_plot
-  
-#ggplt
-  
-# Plotting multiple Regression Lines
-#ggplt+geom_smooth(method=lm,se=FALSE,fullrange=TRUE,
-   #               aes(color=Tree))
-
-#covLM_plot
-
-
-
-```
-
-
-
-
-### LR to predict Precipitation!
-
-Let's start by ingesting the Air Quality to add into this prediction in place of COVID.
-
-```{r load csvs}
-#DailyAQ_00_22 <- data.frame(read.csv("data/daily-AQ-NY-00-20.csv"))
-#DailyAQ_00_22 <- DailyAQ_00_22[c('Date', 'Daily.Mean.PM2.5.Concentration', #'DAILY_AQI_VALUE')]
-#colnames(DailyAQ_00_22) <- c('DATE', 'PM2.5', 'AQI')
-#str(DailyAQ_00_22)
-#xkablesummary(DailyAQ_00_22)
-#xkabledplyhead(DailyAQ_00_22)
-```
-
-Now let's build a master dataframe that incorporates Date, Year, Month, TMAX, PRCP, PRCP_Factor, 
-Crime Count, 
-DOW Volume, 
-PM2.5, and AQI.
-
-```{r}
-
-# FORMAT AQ Data and subset dates
-#AQ_forLogit <- DailyAQ_00_22
-#AQ_forLogit$DATE <- as.Date(AQ_forLogit$DATE, format = "%m/%d/%y")
-#AQ_forLogit$day <- format(AQ_forLogit$DATE, format="%d")
-#AQ_forLogit$month <- format(AQ_forLogit$DATE, format="%m")
-#AQ_forLogit$year <- format(AQ_forLogit$DATE, format="%Y")
-#AQ_forLogit$year <- as.numeric(AQ_forLogit$year)
-
-#AQ_forLogit2 <- AQ_forLogit %>% 
- # complete(DATE = seq.Date(min(DATE), max(DATE), by="day"))
-
-#AQ_masterDates <- subset(AQ_forLogit2, year >= 2006 & year < 2022)
-
 
 stock_masterDates <- subset(NYstock_final,Date >= "2006-01-01" &
                               Date <= "2021-12-31")
@@ -1196,20 +1176,20 @@ master_logFinal$Volume_norm <- sqrt(master_logFinal$Volume)
 
 ```
 
-Now let's build the LR:
-
-```{r}
+```{r, results='markup'}
 
 prcp_logit <- glm(PRCP_factor ~ TMAX + NUM_ARREST +
                     Volume_norm + year + month,
                   data = master_logFinal,
                   family = binomial(link = "logit"))
 
-summary(prcp_logit)
+#summary(prcp_logit)
+xkabledply(prcp_logit, title = paste("Logistic Model: ",                                           format(formula(prcp_logit) )))
 
 ```
 
-Let's assess the LR!
+The logist model to predict the log odds of precipitation, however most of the coefficients in the model are not statistically significant. Year, two separate months, and number of arrests are statistically significant. For year, for every one unit increase in year, the odds of precipitation decrease by a factor of 0.01. This is not a particularly strong effect on the odds. For number of arrests, for every additional arrest, the odds of precipitation decrease by a factor 0.001. This again is not a strong effect, but when accounting for the difference in scale for number of arrests per day, this is a more interesting relationship.
+
 
 ```{r}
 library(ModelMetrics)
@@ -1222,13 +1202,6 @@ prcpLR_prec <- (prcpLR_cm[2,2])/(prcpLR_cm[2,2]+prcpLR_cm[1,2])
 prcpLR_rec <- (prcpLR_cm[2,2])/(prcpLR_cm[2,2]+prcpLR_cm[2,1])
 prcpLR_spec <- (prcpLR_cm[1,1])/(prcpLR_cm[1,1]+prcpLR_cm[1,2])
 
-library(pROC)
-
-master_logFinal$prob=predict(prcp_logit, type = c("response"))
-prcp_roc <- roc(PRCP_factor ~ prob, data = master_logFinal)
-prcp_auc <- auc(prcp_roc)
-prcp_auc
-plot(prcp_roc)
 
 library(pscl)
 prcp_pr2 <- pR2(prcp_logit)
@@ -1236,7 +1209,29 @@ prcp_pr2
 
 ```
 
-This is NOT a good logistic regression!!!
+Unfortunately, this logistic regression is not a great model to predict precipitation. The overall accuracy of the model, using a default cutoff of 0.5, is 0.64. This is not a great improvement over a null model. Additionally, the precision for this model is only 0.03 and the recall rate is only 0.51. 
+
+The McFadden value for this model is 0.01, which shows this model does not explain any variability in the precipitation. 
+
+We also plotted the receiver operator characteristic (ROC) to measure the true positive rate verse the true negative rate of this model.
+
+
+```{r, results='markup'}
+library(pROC)
+
+master_logFinal$prob=predict(prcp_logit, type = c("response"))
+prcp_roc <- roc(PRCP_factor ~ prob, data = master_logFinal)
+prcp_auc <- pROC::auc(prcp_roc)
+prcp_auc
+plot(prcp_roc)
+
+```
+
+
+The area under the ROC curve is 0.575. This confirms the model is not a good fit as it is only slightly greater than the null AUC of 0.5.
+
+Overall, this linear regression was not a good model to predict whether or not precipitation occurred based on human activity. The accuracy of the model and the overall fit were both too poor to be useful for any predictive context. However, this logistic regression appears to confirm a relationship between number of arrests and precipitation. This relationship would be something of interest to explore further in future study.
+
 
 ## Summary of Key Findings
 
@@ -1259,6 +1254,18 @@ Our hypothesis that a correlation would exist between daily weather and air qual
 We determined that the relationship between air quality and global warming is difficult to model using linear techniques due to seasonal trends in the variables. Our attempt to model the effect of these trends using kNN also resulted in a poor-fitted model. Ultimately, a different type of model would be required to address the seasonal component.  
 
 Also, changes in climate are slow to take effect. A increase in emissions does not necessarily lead to increases in temperature on the same time scale. All these effects would need to be taken into consideration for an effective analysis.
+
+
+#### Chris Conclusion:
+
+Our hypothesis that a relationship between daily weather and local human activity, via crime, stock market, and public health data, was shown to exist in some areas. Both crime and stock market trade volume had statistically significant correlations to daily weather variables in our linear models. Crime is correlated to both temperature and precipitation while stock market trade volume is related to temperature. However, neither of these correlations are strong enough to be predictive.
+
+The relationship between crime and weather was the strongest from this analysis. This represents a valuable area for future study in the context of changing weather patterns that was explored in our early project.
+
+There were notable limitations to the methods in this analysis. One key limitation that affected the analysis of public health was the availability of essential data. The COVID-19 case data was based on dates when positive cases were confirmed, rather than tested. Because test and confirmation dates are not always the same, this limited our ability assess relationships that existed on the day of an individual's test. Looking for alternative data sources to explore this relationship would be an interesting area for a future project. 
+
+These questions are only some of the important questions that should be asked about the relationship between humans and weather. As climate change continues, it is important to have an understanding on how it may affect individuals at all levels from the global scale down to local level. 
+
 
 ## References (APA Style)
 
