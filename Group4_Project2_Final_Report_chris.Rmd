@@ -820,8 +820,8 @@ NYstock2$year <- format(NYstock2$Date, format="%Y")
 
 
 
-head(NYstock2)
-summary(NYstock2)
+#head(NYstock2)
+#summary(NYstock2)
 options(scientific=T, digits = 3) 
 
 ```
@@ -933,7 +933,7 @@ NY_90s_weathstock_scatter2
 ```
 With no noticeable correlations between weather and stock volume, a linear model was created to highlight potential hidden relationships that may exist in the data.
 
-```{r}
+```{r, results='markup'}
 
 
 #stock_LM <- lm(Volume_norm ~ TMAX + PRCP_factor + year + month,
@@ -1118,7 +1118,7 @@ covWeath_final_scatter
 Using this EDA, we built a linear model that predicts the normalized COVID-19 case counts using TMAX, precipitation as a factor, year, and month, as the regressors. Year and Month were included in the linear model because we have to account for seasonal changes in both weather and COVID-19.
 
 
-```{r}
+```{r, results='markup'}
 
 #cov_weathLM <- lm(sqrt_count ~ TMAX + PRCP_factor + year,
  #                 data = NYweath_cov_final)
@@ -1176,14 +1176,14 @@ master_logFinal$Volume_norm <- sqrt(master_logFinal$Volume)
 
 ```
 
-```{r}
+```{r, results='markup'}
 
 prcp_logit <- glm(PRCP_factor ~ TMAX + NUM_ARREST +
                     Volume_norm + year + month,
                   data = master_logFinal,
                   family = binomial(link = "logit"))
 
-summary(prcp_logit)
+#summary(prcp_logit)
 xkabledply(prcp_logit, title = paste("Logistic Model: ",                                           format(formula(prcp_logit) )))
 
 ```
