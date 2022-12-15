@@ -1,0 +1,47 @@
+---
+title: "Untitled"
+author: "Emily"
+date: "2022-12-15"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+__
+
+```{r}
+# create matrix with 4 columns and 4 rows
+stuff <- matrix(c(1:16), ncol=4, byrow=TRUE)
+
+# specify the column names and row names of matrix
+colnames(stuff) = c('TMAX model','Regressors','$R^2$','p-value of F-statistic')
+rownames(stuff) <- c('LM1','LM2','LM3','LM4')
+
+stuff
+```
+
+`stuff tuff`  
+
+`r "stiff tiff" `

@@ -116,7 +116,9 @@ NYweath_final$TOT_PRCP <- NYweath_00$PRCP + NYweath_00$SNOW
 
 # Introduction  
 
-In our first project, we analyzed daily weather patterns from data collected at a weather station in Central Park, New York City made available online by the National Oceanic and Atmospheric Administration. Through our analysis, we confirmed that there was a statistically significant rise in daily maximum temperatures in Central Park over the last 122 years.  
+In this project, we are digging into the relationship between human activity and weather in New York city. Our three driving questions are:  
+
+For our first project, we analyzed daily weather patterns from data collected at a weather station in Central Park, New York City made available online by the National Oceanic and Atmospheric Administration. Through our analysis, we confirmed that there was a statistically significant rise in daily maximum temperatures in Central Park over the last 122 years.  
 
 We performed an ANOVA test on daily maximum temperature values over different periods of time and found statistically significant results regarding variance in-between our samples. This led us to create linear models for the change in daily maximum temperature over time, revealing statistically significant warming at an average rate of about 0.025 degrees Fahrenheit per year from 1900-2022. This is in fact a larger increase in temperature than the average global warming trend reported by [INSERT ORGANISATION NAME HERE!] (an average of 0.014 degrees Fahrenheit per year). However, since 1982, average temperatures in Central Park have increased significantly less than average global warming, perhaps because much of the development in New York City took place during the first half of the century.  
 
@@ -131,11 +133,11 @@ For this project, we looked more directly at correlations between human activity
 2. Are there statistically measurable changes in NYC air quality over time, and are they correlated to changes in daily maximum temperature observed in previous analysis?  
 3. How do daily weather patterns correlate to other local human activity, such as crime, reported COVID cases, and stock market performance?  
 
-# Seeking a more direct proxy for human activity for inm Central Park Warming
+# Seeking a more direct proxy for human activity for modeling warming in Central Park
 
 We developed several linear models of Central Park warming over time in Project 1 using all daily TMAX observations between 1900 and 2022. We observed statistically significant correlations between month (as a categorial variable), reflecting seasonal temperature variations, and year (as a numeric variable), reflecting a longer-term warming trend. 
 
-The resulting fit (using all daily data) has an $R^2$ value of 0.775 and a slope of 0.025 degrees Fahrenheit per year, with all fit parameters' p-values well below 0.05. The different intercepts for the each level of the categorical variable (the twelve months of the year) indicated that January is the coldest and July the hottest month in Central Park, with an average difference in maximum daily temperature of approximately 46 degrees Fahrenheit in any given year over this window.  
+The resulting fit (using all daily data) has an &R^2$ value of 0.775 and a slope of 0.025 degrees Fahrenheit per year, with all fit parameters' p-values well below 0.05. The different intercepts for the each level of the categorical variable (the twelve months of the year) indicated that January is the coldest and July the hottest month in Central Park, with an average difference in maximum daily temperature of approximately 46 degrees Fahrenheit in any given year over this window.  
 
 
 ```{r}
@@ -146,7 +148,7 @@ summary(maxTfit00_ym)
 
 ```
 
-The two extremes and their linear models are plotted again here to illustrate the quality of fit.  
+The two extremes and their linear models are plotted in the following figure to illustrate the quality of fit.  
 
 
 ```{r}
@@ -158,6 +160,7 @@ ggplot(NYweath_00a, aes(x = year, y = TMAX, color = month)) +
                                    "07" = "red"), na.value = NA) +
     geom_abline(aes(intercept = -11.05508, slope = 0.02539), col = "black", size = 1) + 
     geom_abline(aes(intercept = 34.98295, slope = 0.02539), col = "black", size = 1) +
+  
     labs(
         x = "Year",
         y = "Maximum Daily Temperature",
@@ -167,11 +170,11 @@ ggplot(NYweath_00a, aes(x = year, y = TMAX, color = month)) +
     ggtitle(label = "Maximum Daily Temperature in Central Park")
 ```
 
-However, we expect that time is just a proxy for the cause: human activity-- namely, construction in the local environment using materials that hold more heat than the natural environment (EPAb 2022), and increased consumption of energy and materials that release greenhouse gases over the course of their life cycle.  We wanted to explore correlations with other, more direct proxies for human activity. 
+However, we expect that time is just a proxy for the cause: human activity-- namely, construction in the local environment using materials that hold more heat than the natural environment, and increased consumption of energy and materials that release greenhouse gases over the course of their life cycle.  We wanted to explore correlations with other, more direct proxies for human activity. 
 
 We sought other data sources related to these trends, for example local economic data (New York GDP), construction (sector revenue or number of new sites), New York City population, and local GHG emissions. While we found some sources for most of these, unfortunately none extended more than 50 years into the past with daily or annual observations except one: annual New York State population data (obtained from Macrotrends.com). Because this source was unknown, we validated the reported value for each decade against the corresponding data from the U.S. Census (it appears that values for intervening years were interpolated somehow).
 
-We then recreated a new linear model for TMAX (for 1900-2021 due to range of population data), attempting to use New York State `population` instead of year.   
+We then recreated a new linear model for TMAX (for 1900-2021 due to range of population data), attempting to use New York State {r population} instead of year.   
 
 
 ```{r}
@@ -181,7 +184,7 @@ summary(maxTfit00_pop)
 
 ```
 
-We do observe a significant correlation (the p-value of the model's `population` coefficient is well below the cutoff of alpha = 0.05), the fit appears not to be any better than the regression against year. This caused us to wonder if a fit using month alone would be better than a fit using `month` or `year`, or `population` or `year`.  
+We do observe a significant correlation (the p-value of the model's {r population} coefficient is well below the cutoff of alpha = 0.05), the fit appears not to be any better than the regression against year. This caused us to wonder if a fit using month alone would be better than a fit using month or year, or population or year.  
 
 
 ```{r}
@@ -200,7 +203,7 @@ summary(maxTfit00_m)
 ```
 
 
-The $R^2$ value is a bit lower (though not much: 0.771 v. 0.773). To assess whether the model is distinct from those also including `population` or `year`, we ran ANOVA tests on each pair of nested models. According to the tests, the models are in fact significantly different (p-values of the chi-squared fits were well below an alpha of 0.05).  
+The &R^2$ value is a bit lower (though not much: 0.771 v. 0.773). To assess whether the model is distinct from those also including {r "population"} or {r "year"}, we ran ANOVA tests on each pair of nested models. According to the tests, the models are in fact significantly different (p-values of the chi-squared fits were well below an alpha of 0.05).  
 
 Nonetheless, given that the data are partially interpolated values and that we are looking at subtle, long-term trends over only 122 years-- and that climate change is a complicated, average, and distributed phenomenon-- we have probably exhausted our ability to build models based solely on Central Park data.  
 
@@ -215,7 +218,7 @@ cor
 
 ```
 
-We do see some correlation between `TMAX` and `SNOW`, and so add this into the model (`TMAX ~ year + month + SNOW`). This is slightly improved (with all coefficients' p-values well below 0.05): year, month, and whether it is snowing appear to account for 77.6% of the variability of in daily maximum temperature in Central Park. (However, we note that 96 NAs for `SNOW` had to be removed to calculate the model, so this result is likely not directly comparable to the other models). We also considered additional local environmental correlations, described in the next section.  
+We do see some correlation between {r "TMAX"} and {r "SNOW"}, and so add this into the model (TMAX ~ year + month + SNOW). This is slightly improved (with all coefficients' p-values well below 0.05): year, month, and whether it is snowing appear to account for 77.6% of the variability of in daily maximum temperature in Central Park. (However, we note that 76 NAs for {r "SNOW"} had to be removed to calculate the model, so this result is likely not directly comparable to the other models).
 
 ```{r}
 #LM4
@@ -394,7 +397,7 @@ ggplot(DailyAQ_monthly, aes(x = as.numeric(month), y = aqi_avg)) +
 
 Plotting the average AQI by month, we observe seasonal trends. AQI values are generally high during winter and summer months, but realtively low for the the months in between.  
 
-Based on this, we modify our last model and attempt to fit seasonality by adding `month` as a categorical regressor, along with our variable-of-interest from the last project - `TMAX`.
+Based on this, we modify our last model and attempt to fit seasonality by adding `month` as a categorical regressor, along with our variable-of-interest from the last project - TMAX.
 
 ```{r second linear model}
 aqi_fit2 <- lm(AQI ~ TMAX + month, data = DailyAQ_merged)
@@ -402,16 +405,18 @@ summary(aqi_fit2)
 xkabledply(aqi_fit2, title = paste("Second Linear Model: ", format( formula(aqi_fit2) )))
 ```
 
-The regression coefficient for `TMAX` is significant and positively correlated, with each degree Fahrenheit increase resulting in AQI increasing by a factor of 0.68. The regression coefficients for all month categories are also significant. In fact, every month has a negative impact on AQI when compared to January. September exhibits the largest difference, with a predicted AQI almost 44 points lower than January!  
+The regression coefficient for TMAX is significant and positively correlated, with each degree Fahrenheit increase resulting in AQI increasing by a factor of 0.68. The regression coefficients for all month categories are also significant. In fact, every month has a negative impact on AQI when compared to January. September exhibits the largest difference, with a predicted AQI almost 44 points lower than January!  
 
-The p-value of the model's F-statistic is also significant, concluding a significant relationship between our chosen predictors and the daily AQI value. However, the $R^2$ for our model is only `.149`, which is weaker than our previous model. This indicates that only 14.7% of the variation in daily AQI can be explained by `TMAX` and `month`.  
+The p-value of the model's F-statistic is also significant, concluding a significant relationship between our chosen predictors and the daily AQI value. However, the $R^2$ for our model is only `.149`, which is weaker than our previous model. This indicates that only 14.7% of the variation in daily AQI can be explained by TMAX and month.  
 
 ```{r model 1 VIF}
 # model VIF scores
 xkablevif(aqi_fit2, title = "Model 2 VIF")
 ```
 
-The VIF scores for all regressors are in an acceptable range, however the fit is still poor. It seems that due to seasonal nature of our time-series data, we cannot properly model daily AQI using linear regression. Perhaps a classification technique can be utilized to address the seasonal trends. More precisely, we can build a kNN model to classify the month based on daily AQI and maximum temperature values.  
+The VIF scores for all regressors are in an acceptable range, however the fit is still poor. From our results, we can conclude that linear models are insufficient for representing data with seasonal trends.  
+
+It seems that due to seasonal nature of our time-series data, we cannot properly model daily AQI using linear regression. Perhaps a classification technique can be utilized to address the seasonal trends. More precisely, we can build a kNN model to classify the month based on daily AQI and maximum temperature values.  
   
 We start with plotting the relationship between our chosen predictors and add a layer to discern month within the plot.
   
@@ -524,21 +529,90 @@ knnROC$auc
 A multi-class ROC evaluation on the test labels yields an AUC value of 0.65, which is higher than expected based on the model's accuracy value. Still, this is not a significant result based on the AUC threshold of 0.8.  
 
 # Local weather and local human social and economic activity
+The last question our team set out to address if a relationship exists between local weather and local human social and economic activity. The relationship has been been explored in the past with evidence suggesting weather has effects on an individuals mood, thermal comfort level, social interaction and can influence traffic, travel, public health, crime rates, and even stock prices (Horanont, 2013). Our team looked to expand on this prior work by making these observations at the local level of New York City. We decided to look specifically at the relationship between local weather and crime rates,stock prices, and public health. 
 
-The last question our team set out to address is whether a relationship exists between local weather and local human social and economic activity. The relationship has been been explored in the past with evidence suggesting weather has effects on an individuals mood, thermal comfort level, social interaction and can influence traffic, travel, public health, crime rates, and even stock prices (Horanont, 2013). Our team looked to expand on this prior work by making these observations at the local level of New York City. We decided to look specifically at the relationship between local weather and crime rates,stock prices, and public health. 
-
-Two data sets were used to explore weather's impact on crime rates. First we looked at NYC shootings and then all arrests with 5,844 observations between 2006 and 2021. Both of these data sets were available through NYC's Open Data repository (https://opendata.cityofnewyork.us/).
+Two data sets were used to explore weather's impact on crime rates. First we looked at NYC shootings and then all arrests with 5,844 observations. Both of these data sets were available through NYC's Open Data repository (https://opendata.cityofnewyork.us/) and had data from 2006-2021.
 
 To interrogate weather's impact on public health, our team looked at COVID-19 case counts in New York City. The data was available from New York City's Open Data repository. The data set consisted of 991 observations between February 29th, 2020 and present day.
 
+###Shootings
+
+We found daily records of shootings occurring in New York City from 2006-2022, and from here extracted the number of daily shootings, and merged it with our weather data from the same time frame. We started with a simple correlation plot, and observed negative correlations between number of shootings with {r "year"} and {r "PRCP"}, a positive correlation with {r "SNOW"} and {TMAX"}. 
+
+```{r}
+# correlation between shooting & weather data
+NYweathshoot_06_cor <- subset(NYweathshoot_06, select = c(year, day, TMAX, PRCP, SNOW, Shootings))
+#str(NYweathshoot_06_cor)
+shootcor <- cor(NYweathshoot_06_cor, use = "pairwise.complete.obs")
+corrplot::corrplot(shootcor)
+cor
+```
+
+We wanted to use all of these variables as regressors in a linear model. EDA revealed that the shooting data are not normally distributed, but are right-skewed -- not surprising, given that they are bound on the left side by zero. However, since there were > 5,000 data points we tried a linear model anyhow.
+
+```{r}
+#modeling Shootings
+
+#shoot_lm <- lm(formula = Shootings ~ year + month + day + SNOW + PRCP + TMAX + TMIN, data = NYweathshoot_06) 
+NYweathshoot_06$month <- as.factor(NYweathshoot_06$month)
+#shoot_lm <- lm(formula = Shootings ~ year + month + SNOW + PRCP + TMAX, data = NYweathshoot_06) # fit is better, but some parameters are not significant.
+
+#this is the most reasonable model (EDA not included)
+shoot_lm <- lm(formula = Shootings ~ year + SNOW + PRCP + TMAX, data = NYweathshoot_06) 
+summary(shoot_lm) 
+
+```
+
+All model parameters were significant (p-values of coefficients less than 0.05), and the multiple $R^2$ is 0.129. This suggests that the number of shootings per day in New York City between 2006 and 2022 has been decreasing; that shootings are statistically significantly less likely to be reported when it is raining; and that shootings are more likely to be reported when it is snowing than when it is not, and for higher daily maximum temperatures. This could reflect trends in human predilection for violence as a function of weather, or it could reflect different willingness of individuals to report crimes as a function of weather.  
+
+To see if we could generate a more predictive model, we experimented with variable transformation, taking the square root of the number of daily shootings, which generated a more normally distributed variable.  
+
+```{r}
+NYweathshoot_06$Shootvt <- (NYweathshoot_06$Shootings)^0.5
+
+#plot of transformed variable
+
+ggplot(NYweathshoot_06) +
+  geom_histogram(aes(x=Shootvt), na.rm=TRUE, alpha=0.5, color="black", bins=15, binwidth=1, fill = "green") + 
+  labs(title="Distribution of Sqrt Number of Daily NYC Shootings (2006-2021)", x="Sqrt Number of Daily Shootings", y="Count")
+
+```
+
+```{r}
+#shootvt_lm <- lm(formula = Shootvt ~ year + SNOW + PRCP + TMAX, data = NYweathshoot_06) 
+#summary(shootvt_lm)
+# This fit is better, with multiple r-squared of 0.138
+
+shootvt_lm2 <- glm(formula = Shootings ~ year + SNOW + PRCP + TMAX, data = NYweathshoot_06, family = gaussian(link = "sqrt"))
+summary(shootvt_lm2)
+```
+
+
+
+###Stock Market  
+
 For stock market data, we looked at the total daily trade for the DOW Jones Industrial Index. This data contained 10,822 observations dating back to December 25, 1979, however trade volume has was only available since 1988.
 
+To draw conclusions about weather's relationship with human activity, we use TMAX and a binary factor of total precipitation as the predictor weather variables. We incorporated month and year into these relationships as we saw seasonality effects and changes over time in our previous effort.
 
-##Shootings
+```{r}
+# correlation between shooting & weather data from Emily
+NYweathshoot_06_cor <- subset(NYweathshoot_06, select = c(year, day, TMAX, PRCP, SNOW, Shootings, Murders))
+str(NYweathshoot_06_cor)
+shootcor <- cor(NYweathshoot_06_cor, use = "pairwise.complete.obs")
+corrplot::corrplot(shootcor)
+cor
+```
 
-We found records of all reported shootings, with at least one injured victim, occurring in New York City from 2006-2021. From here we extracted the number of daily shootings, and merged this information with our weather data from the same time frame. We conducted some simple EDA. We observed
+```{r}
+#plot from Emily
+ggplot(NYweathshoot_06) +
+  geom_histogram(aes(x=Shootings), na.rm=TRUE, alpha=0.5, color="black", bins=100, binwidth=2, fill = "green") + 
+  labs(title="Distribution of daily NYC shootings (2006-2021)", x="Number of daily Shootings", y="Count")
 
+#Not quite normal-- necessarily right-skewed, but a lot of data points...
 
+```
 ```{r average # shootings bar plot, results='asis'}
 
 #ERG
@@ -562,125 +636,30 @@ shoot_Month %>%
 #making scatter plot of Shootings v TMAX-- ERG Add
 ggplot(NYweathshoot_06, aes(x = TMAX, y = Shootings, color = month)) +
     geom_point() +
+  #  scale_color_gradient(low="red", high="blue") +   
+  #scale_color_manual(values = c("01" = "purple4",
+#                                   "07" = "red"), na.value = NA) +
+    #geom_abline(aes(intercept = -11.05508, slope = 0.02539), col = "black", size = 1) + 
+    labs(
+        x = "Year",
+        y = "Maximum Daily Temperature",
+        title = "Maximum Daily Temperature in Central Park") +
     xlab(label = "TMAX (degrees Fahrenheit)") +
     ylab(label = "# Shootings") +
     ggtitle(label = "Number of NYC Shootings v. TMAX")
-
-ggplot(NYweathshoot_06, aes(x = PRCP, y = Shootings, color = month)) +
-    geom_point() +
-    xlab(label = "PRCP (inches)") +
-    ylab(label = "# Shootings") +
-    ggtitle(label = "Number of NYC Shootings v. PRCP")
-
-ggplot(NYweathshoot_06, aes(x = year, y = Shootings, color = month)) +
-    geom_point() +
-    xlab(label = "year") +
-    ylab(label = "# Shootings") +
-    ggtitle(label = "Number of NYC Shootings v. year")
 ```
-
-
-We then completed a simple correlation plot, and observed negative correlations between number of shootings with `year` and `PRCP`, a positive correlation with `SNOW` and `TMAX`.  
-
-```{r}
-# correlation between shooting & weather data
-NYweathshoot_06_cor <- subset(NYweathshoot_06, select = c(year, day, TMAX, PRCP, SNOW, Shootings))
-#str(NYweathshoot_06_cor)
-shootcor <- cor(NYweathshoot_06_cor, use = "pairwise.complete.obs")
-corrplot::corrplot(shootcor)
-cor
-```
-
-We wanted to use all of these variables as regressors in a linear model. EDA revealed that the shooting data are not normally distributed, but are right-skewed -- not surprising, given that they are bound on the left side by zero -- as apparent in the plot below.  
-
-```{r}
-ggplot(NYweathshoot_06) +
-  geom_histogram(aes(x=Shootings), na.rm=TRUE, alpha=0.5, color="black", bins=100, binwidth=2, fill = "green") + 
-  labs(title="Distribution of daily NYC shootings (2006-2021)", x="Number of daily Shootings", y="Count")
-
-#Not quite normal-- necessarily right-skewed, but a lot of data points...
-
-```
-
-However, since there were > 5,000 data points we created a linear model anyhow, using year and our main weather variables as regressors (we tried using month also, but most of the resulting coefficients for this factor variable were not statistically significant).  
 
 ```{r}
 #modeling Shootings
 
-NYweathshoot_06$month <- as.factor(NYweathshoot_06$month)
-
 #shoot_lm <- lm(formula = Shootings ~ year + month + day + SNOW + PRCP + TMAX + TMIN, data = NYweathshoot_06) 
-#shoot_lm <- lm(formula = Shootings ~ year + month + SNOW + PRCP + TMAX, data = NYweathshoot_06) # fit is better, but some parameters are not significant.
-
-#this is the most reasonable model (EDA not included)
+NYweathshoot_06$month <- as.factor(NYweathshoot_06$month)
+#shoot_lm <- lm(formula = Shootings ~ year + month + SNOW + PRCP + TMAX, data = NYweathshoot_06) 
 shoot_lm <- lm(formula = Shootings ~ year + SNOW + PRCP + TMAX, data = NYweathshoot_06) 
 summary(shoot_lm) 
 
 ```
 
-All fit parameters for this model (`Shootings ~ year + SNOW + PRCP + TMAX`) were significant (p-values of coefficients less than 0.05), and the multiple $R^2$ was 0.129. This suggests that the number of shootings per day in New York City between 2006 and 2021 has been decreasing; that statistically significantly fewer shootings are likely when it is raining; and that shootings are more likely to be reported when it is snowing than when it is not, and for higher daily maximum temperatures. 
-
-These correlations could reflect trends in human predilection for gun violence as a function of weather (when it's raining, do people stay home instead of going out with their guns? when it's hotter, are they somewhat more likely to be riled up enough to fire them?). Or it could reflect different availability or ability of individuals to report shootings based on weather conditions (fewer witnesses when it's raining? improved ease of spotting blood in the snow?). It would be difficult to understand without studying these individuals using social science methods-- including interview, psychoanalysis, and statistical analysis. 
-
-
-```{r}
-#TESTING ASSUMPTIONS
-#Generate residual and predicted values
-#NYweathshoot_06$resids0 <- residuals(shoot_lm)
-#NYweathshoot_06$preds0 <- predict(shoot_lm)
-#NYweathshoot_06$sq_preds0 <- (NYweathshoot_06$preds0)^2
-
-#plot resids
-#plot(resids0 ~ preds0, data = NYweathshoot_06,
-#xlab = "Predicted Values",
-#ylab = "Residuals")
-
-```
-
-However, the residuals for this model were not quite evenly balanced, so we  we experimented with variable transformation, to see if we could generate a more predictive model, taking:  
-1. the square root of the daily number of shootings, and  
-2. the log of (1 + the daily number of shootings),   
-both of which generated a more normally distributed response variable.  
-
-```{r}
-#sqrt transformation of variable  
-NYweathshoot_06$Shootvt <- (NYweathshoot_06$Shootings)^0.5
-
-#log(x+1) transf of variable
-NYweathshoot_06$Shootvt1 <- log(NYweathshoot_06$Shootings + 1)
-
-#plot of sqrt transformed variable
-
-ggplot(NYweathshoot_06) +
-  geom_histogram(aes(x=Shootvt), na.rm=TRUE, alpha=0.5, color="black", bins=15, binwidth=1, fill = "green") + 
-  labs(title="Distribution of Sqrt Number of Daily NYC Shootings (2006-2021)", x="Sqrt Number of Daily Shootings", y="Count")
-
-#plot of log(x+1) transformed variable
-
-ggplot(NYweathshoot_06) +
-  geom_histogram(aes(x=Shootvt1), na.rm=TRUE, alpha=0.5, color="black", bins=15, binwidth=1, fill = "green") + 
-  labs(title="Distribution of Log Number of Daily NYC Shootings (2006-2021)", x="Log(Number of Daily Shootings + 1)", y="Count")
-```
-
-```{r}
-#edited
-
-#model for sqrt transf
-shootvt_lm <- lm(formula = Shootvt ~ year + SNOW + PRCP + TMAX, data = NYweathshoot_06) 
-summary(shootvt_lm)
-# This fit is better, with multiple r-squared of 0.138
-
-#model for log transf
-shootvt_lm1 <- lm(formula = Shootvt1 ~ year + SNOW + PRCP + TMAX, data = NYweathshoot_06) 
-summary(shootvt_lm1)
-
-```
-
-These dependent variable-transformed models are of similar quality, both with an adjusted $R^2$ of 0.137, an improvement over the 0.128 value for the linear model with a non-transformed regressand (all models have F-statistic p-values of less than 0.05). Interestingly, in the variable-transformed models, the model coefficient for `SNOW` was not statistically significant.
-
-## Arrest data
-
-After looking at the relationship between reported shootings in NYC and local weather, we looked at arrests in New York (for any crime). This data was not previously analyzed by our group so we did some basic EDA to determine the distribution of the new data and identify correlations that exist.
 
 ```{r}
 # Add a column to convert PRCP to a binary factor variable. Don't care how much it rains, only if it rains. 
@@ -692,6 +671,10 @@ NYweath_prcpFact$PRCP_factor <- as.factor(NYweath_prcpFact$PRCP_factor)
 
 
 ```
+
+### Crime data
+
+After looking at the relationship between reported shootings in NYC and local weather, we expanded our comparison to all arrests, not just shootings. This data was not previously analyzed by our group so we did some basic EDA to determine the distribution of the new data and identify correlations that exist.
 
 ```{r}
 
@@ -731,7 +714,7 @@ crime_hist
 
 The histogram shows the distribution of the number of daily arrests in NYC to be a slight bimodal distribution. However, because of the large sample size, we will consider this a normal distribution.
 
-We incorporated month and year into these relationships as we saw seasonality effects and changes over time in our previous effort. We plotted arrest counts and temperature, with points coded by precipitation as a binary factor (whether or not it rained or snowed) and month. This plot is below with no initial patterns that can be discerned. 
+We plotted arrest counts and temperature, with points coded by precipitation and month. This plot is below with no initial patterns that can be discerned. 
 
 ```{r, results='markup'}
 
@@ -815,8 +798,7 @@ The linear model of arrests as predicted by of temperature, precipitation, year,
 There is a weak positive relationship between arrests and TMAX, for every degree increase in temperature there are about 2.34 more arrests.  Precipitation had a slightly more impactful effect on the number of daily arrests. The linear model shows a decrease of 46.13 arrests on days with precipitation, confirming what we saw in our t-test. The model also shows a decreasing number of arrests over time and that most months have a statistically significant relationship with the number of daily arrests.
 
 
-##Stock Market  
-
+### Stock Market Data
 
 Next, we looked at the effect weather has on the stock market, looking at the trade volume of the Dow Jones Industrial index in the 1990s. This time period was chosen due to the transition to digital stock trading with the rise of computers. We hypothesized that if weather had an effect on trade volume, the effect would be greatest for this time given the data available.
 
@@ -1280,8 +1262,9 @@ Cannot model seasonality with linear regressions. Potentially need to use season
 What data would enable us to answer the question if we had more time?
 
 # Conclusions
-
-
+- What were the limitations to your methods
+- Data availability issues. Not having all data we wanted to explore.
+- Brief model evaluation and comparison
 
 #### Tejas' conclusion
 Our hypothesis that a correlation would exist between daily weather and air quality variables was ultimately proven wrong. We observed trends of declining AQI over time, but the explanation of variance from our model results was not strong enough to deem the model a good fit. Similarly, a linear model predicting AQI based on the categorical month variable, along with TMAX, also resulted in a poor fit.  
@@ -1290,36 +1273,20 @@ We determined that the relationship between air quality and global warming is di
 
 Also, changes in climate are slow to take effect. A increase in emissions does not necessarily lead to increases in temperature on the same time scale. All these effects would need to be taken into consideration for an effective analysis.
 
-###Human Activity
+#### Chris Conclusion:
 
-We determined that a relationship between daily weather and local human activity, via crime, stock market, and public health data, was shown to exist in some areas. Both crime and stock market trade volume had statistically significant correlations to daily weather variables in our linear models. Crime is correlated to both temperature and precipitation while stock market trade volume is related to temperature. However, models based on these correlations are not strong or complete enough to be predictive.
+We determined that a relationship between daily weather and local human activity, via crime, stock market, and public health data, was shown to exist in some areas. Both crime and stock market trade volume had statistically significant correlations to daily weather variables in our linear models. Crime is correlated to both temperature and precipitation while stock market trade volume is related to temperature. However, neither of these correlations are strong enough to be predictive.
 
-Observed correlations between crime and weather was the strongest from this analysis. This represents a valuable area for future study in the context of changing weather patterns that was explored in our early project.
+The relationship between crime and weather was the strongest from this analysis. This represents a valuable area for future study in the context of changing weather patterns that was explored in our early project.
 
-There were notable limitations to the methods in this analysis. One key limitation that affected the analysis of public health was the availability of essential data. The COVID-19 case data was based on dates when positive cases were confirmed, rather than tested. Because test and confirmation dates are not always the same, this limited our ability assess relationships that existed on the day of an individual's test. Looking for alternative data sources to explore this relationship would be an interesting area for a future project. From our results, we also conclude that linear models might not be optimal for representing data with seasonal trends.  
+There were notable limitations to the methods in this analysis. One key limitation that affected the analysis of public health was the availability of essential data. The COVID-19 case data was based on dates when positive cases were confirmed, rather than tested. Because test and confirmation dates are not always the same, this limited our ability assess relationships that existed on the day of an individual's test. Looking for alternative data sources to explore this relationship would be an interesting area for a future project. 
 
-These questions are only some of the important questions that should be asked about the relationship between humans, weather, climate, and the environment. As climate change continues, it will be increasingly important to continue to study its effects on people, from the global scale down to local communities around the world. 
+These questions are only some of the important questions that should be asked about the relationship between humans and weather. As climate change continues, it is important to have an understanding on how it may affect individuals at all levels from the global scale down to local level. 
 
-
-# References
-
-City of New York. _NYPD Shooting Incident Data (Historic)_ retrieved December 6, 2022, from https://data.cityofnewyork.us/Public-Safety/NYPD-Shooting-Incident-Data-Historic-/833y-fsy8  
+# References (APA Style)
 
 Lindsey, R.; Dahlman, L. (2022, June 28). _Climate change: Global temperature._ Climate.gov. Retrieved December 11, 2022, from https://www.climate.gov/news-features/understanding-climate/climate-change-global-temperature  
 
-NYC Environment and Health Data Portal, _Tracking changes in New York City's sources of air pollution._, published online April 12, 2021, retrieved December 6, 2022, from https://a816-dohbesp.nyc.gov/IndicatorPublic/beta/data-stories/aq-cooking/  
+United States Environmental Protection Agency, _Air Data Basic Information._, retrieved December 8, 2022, from, https://www.epa.gov/outdoor-air-quality-data/air-data-basic-information  
 
-NOAA National Centers for Environmental Information, _Monthly Global Climate Report for Annual 2021_, published online January 2022, retrieved on November 2, 2022 from https://www.ncei.noaa.gov/access/monitoring/monthly-report/global/202113  
-
-NOAA National Centers for Environmental Information, "Climate Data Online." Custom data requests and downloads retrieved on October 1 (Central Park data) and October 16, 2022 (JFK data) from https://www.ncdc.noaa.gov/cdo-web/  
-
-Parida, B. R., Bar, S., Kaskaoutis, D., Pandey, A. C., Polade, S. D., & Goswami, S. (2021). _Impact of COVID-19 induced lockdown on land surface temperature, aerosol, and urban heat in Europe and North America._ Sustainable cities and society, 75, 103336. https://doi.org/10.1016/j.scs.2021.103336  
-
-Storms, C. (2015). _New York City Panel on Climate Change 2015 Report: Executive summary._ Ann NY Acad Sci, 1336, 9-17. Retrieved on October 29, 2022 from https://nyaspubs.onlinelibrary.wiley.com/doi/10.1111/nyas.14008  
-
-United States Environmental Protection Agency (EPA), _Air Data Basic Information._, retrieved December 8, 2022, from, https://www.epa.gov/outdoor-air-quality-data/air-data-basic-information  
-
-United States Environmental Protection Agency (EPAa), _Climate Change Indicators: U.S. and Global Precipitation_, published online August 2022, retrieved on November 2, 2022 from https://www.epa.gov/climate-indicators/climate-change-indicators-us-and-global-precipitation  
-
-United States Environmental Protection Agency (EPAb), _Learn About Heat Islands._ Retrieved on November 3, 2022 from https://www.epa.gov/heatislands/learn-about-heat-islands 
-
+NYC Environment and Health Data Portal, _Tracking changes in New York City's sources of air pollution._, published online April 12, 2021, retrieved December 6, 2022, from https://a816-dohbesp.nyc.gov/IndicatorPublic/beta/data-stories/aq-cooking/ 
