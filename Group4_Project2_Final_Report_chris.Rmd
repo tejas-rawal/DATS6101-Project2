@@ -1256,7 +1256,7 @@ We determined that the relationship between air quality and global warming is di
 Also, changes in climate are slow to take effect. A increase in emissions does not necessarily lead to increases in temperature on the same time scale. All these effects would need to be taken into consideration for an effective analysis.
 
 
-#### Chris Solution:
+#### Chris Conclusion:
 
 Our hypothesis that a relationship between daily weather and local human activity, via crime, stock market, and public health data, was shown to exist in some areas. Both crime and stock market trade volume had statistically significant correlations to daily weather variables in our linear models. Crime is correlated to both temperature and precipitation while stock market trade volume is related to temperature. However, neither of these correlations are strong enough to be predictive.
 
